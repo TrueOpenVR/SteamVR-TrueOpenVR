@@ -64,6 +64,7 @@ static const char * const k_pch_Sample_DistortionK1_Float = "DistortionK1";
 static const char * const k_pch_Sample_DistortionK2_Float = "DistortionK2";
 static const char * const k_pch_Sample_ZoomWidth_Float = "ZoomWidth";
 static const char * const k_pch_Sample_ZoomHeight_Float = "ZoomHeight";
+static const char * const k_pch_Sample_DebugMode_Bool = "DebugMode";
 
 typedef struct _HMDData
 {
@@ -85,8 +86,6 @@ HMODULE hDll;
 THMD myHMD;
 
 bool HMDConnected = false;
-
-DWORD ScreenIndex, UserWidth, UserHeight, RenderWidth, RenderHeight, Scale;
 
 double DegToRad(double f) {
 	return f * (3.14159265358979323846 / 180);
@@ -186,19 +185,26 @@ public:
 		m_flIPD = vr::VRSettings()->GetFloat( k_pch_SteamVR_Section, k_pch_SteamVR_IPD_Float );
 
 		char buf[1024];
-		vr::VRSettings()->GetString( k_pch_Sample_Section, k_pch_Sample_SerialNumber_String, buf, sizeof( buf ) );
+		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_SerialNumber_String, buf, sizeof(buf));
 		m_sSerialNumber = buf;
 
-		vr::VRSettings()->GetString( k_pch_Sample_Section, k_pch_Sample_ModelNumber_String, buf, sizeof( buf ) );
+		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_ModelNumber_String, buf, sizeof(buf));
 		m_sModelNumber = buf;
 
-		m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat( k_pch_Sample_Section, k_pch_Sample_SecondsFromVsyncToPhotons_Float );
+		m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowX_Int32);
+		m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowY_Int32);
+		m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowWidth_Int32);
+		m_nWindowHeight = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowHeight_Int32);
+		m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_RenderWidth_Int32);
+		m_nRenderHeight = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_RenderHeight_Int32);
+		m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_SecondsFromVsyncToPhotons_Float);
 		m_flDisplayFrequency = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_DisplayFrequency_Float);
 
 		m_fDistortionK1 = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_DistortionK1_Float);
 		m_fDistortionK2 = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_DistortionK2_Float);
 		m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_ZoomWidth_Float);
 		m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_ZoomHeight_Float);
+		m_bDebugMode = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_DebugMode_Bool);
 
 		//DriverLog( "driver_null: Serial Number: %s\n", m_sSerialNumber.c_str() );
 		//DriverLog( "driver_null: Model Number: %s\n", m_sModelNumber.c_str() );
@@ -212,10 +218,6 @@ public:
 		CRegKey key;
 		TCHAR libPath[MAX_PATH];
 
-		//DISPLAY_DEVICE Display;
-		//DEVMODE DevMode;
-		//Display.cb = sizeof(DISPLAY_DEVICE);
-
 		LONG status = key.Open(HKEY_CURRENT_USER, _T("Software\\TrueOpenVR"));
 		if (status == ERROR_SUCCESS)
 		{
@@ -227,26 +229,6 @@ public:
 				status = key.QueryStringValue(_T("Library"), libPath, &libPathSize);
 			#endif
 
-			//key.QueryDWORDValue(_T("ScreenIndex"), ScreenIndex);
-
-			//EnumDisplayDevices(NULL, ScreenIndex, &Display, EDD_GET_DEVICE_INTERFACE_NAME);
-			//EnumDisplaySettings((LPCTSTR)Display.DeviceName, ENUM_REGISTRY_SETTINGS, &DevMode);
-			//UserWidth = DevMode.dmPelsWidth;
-			//UserHeight = DevMode.dmPelsHeight;
-			//m_flDisplayFrequency = DevMode.dmDisplayFrequency;
-			//m_flSecondsFromVsyncToPhotons = 0.0;
-
-			key.QueryDWORDValue(_T("UserWidth"), UserWidth); 
-			key.QueryDWORDValue(_T("UserHeight"), UserHeight);
-			key.QueryDWORDValue(_T("Scale"), Scale);
-			if (Scale == 1) {
-				key.QueryDWORDValue(_T("RenderWidth"), RenderWidth);
-				key.QueryDWORDValue(_T("RenderHeight"), RenderHeight);
-			}
-			else {
-				RenderWidth = UserWidth;
-				RenderHeight = UserHeight;
-			}
 
 			if (status == ERROR_SUCCESS)
 			{
@@ -261,19 +243,6 @@ public:
 		}
 
 		key.Close();
-
-		m_nWindowWidth = UserWidth;
-		m_nWindowHeight = UserHeight;
-		m_nRenderWidth = RenderWidth;
-		m_nRenderHeight = RenderHeight;
-
-		//if (UserWidth < DevMode.dmPelsWidth) m_nWindowX = DevMode.dmPosition.x + (DevMode.dmPelsWidth - UserWidth) / 2;
-		//if (UserHeight < DevMode.dmPelsHeight) m_nWindowY = (DevMode.dmPelsHeight - UserHeight) / 2;
-
-		//m_nWindowX = DevMode.dmPosition.x; 
-		//m_nWindowY = DevMode.dmPosition.y;
-		m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowX_Int32);
-		m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowY_Int32);
 		
 	}
 
@@ -300,6 +269,9 @@ public:
 
 		// avoid "not fullscreen" warnings from vrmonitor
 		vr::VRProperties()->SetBoolProperty( m_ulPropertyContainer, Prop_IsOnDesktop_Bool, false );
+
+		//Debug mode activate Windowed Mode (borderless fullscreen), lock to 30 FPS 
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, Prop_DisplayDebugMode_Bool, m_bDebugMode);
 
 		// Icons can be configured in code or automatically configured by an external file "drivername\resources\driver.vrresources".
 		// Icon properties NOT configured in code (post Activate) are then auto-configured by the optional presence of a driver's "drivername\resources\driver.vrresources".
@@ -522,6 +494,7 @@ private:
 	float m_fDistortionK2;
 	float m_fZoomWidth;
 	float m_fZoomHeight;
+	bool m_bDebugMode;
 };
 
 //-----------------------------------------------------------------------------
