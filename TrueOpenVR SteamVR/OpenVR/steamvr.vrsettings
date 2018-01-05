@@ -16,8 +16,10 @@
 	  "ipd" : <IPD>,
 	  "DistortionK1" : <DISTORTIONK1>,
 	  "DistortionK2" : <DISTORTIONK2>,
-	  "ZoomWidth" : <ZOOMWIDTH>,
-	  "ZoomHeight" : <ZOOMHEIGHT>,
+	  "ZoomWidth" : 0.8,
+	  "ZoomHeight" : 0.8,
+	  "DistanceBetweenEyes" : 0,
+	  "ScreenOffsetX" : 0,
 	  "DebugMode" : <DEBUGMODE>
    },
    "steamvr" : {

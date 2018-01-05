@@ -30,7 +30,7 @@ object Main: TMain
     Width = 75
     Height = 25
     Caption = 'Install'
-    TabOrder = 0
+    TabOrder = 1
     OnClick = ApplyBtnClick
   end
   object CancelBtn: TButton
@@ -39,7 +39,7 @@ object Main: TMain
     Width = 75
     Height = 25
     Caption = 'Cancel'
-    TabOrder = 1
+    TabOrder = 2
     OnClick = CancelBtnClick
   end
   object AboutBtn: TButton
@@ -48,7 +48,7 @@ object Main: TMain
     Width = 28
     Height = 25
     Caption = '?'
-    TabOrder = 2
+    TabOrder = 3
     OnClick = AboutBtnClick
   end
   object DbgMdCb: TCheckBox
@@ -57,7 +57,7 @@ object Main: TMain
     Width = 60
     Height = 17
     Caption = 'Activate'
-    TabOrder = 3
+    TabOrder = 0
   end
   object XPManifest: TXPManifest
     Left = 224
