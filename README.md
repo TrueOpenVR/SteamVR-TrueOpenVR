@@ -1,4 +1,4 @@
 # SteamVR
-An SteamVR driver, providing SteamVR support for TrueOpenVR standard.
+An SteamVR driver with TrueOpenVR standard support.
 
 **[Download](https://github.com/TrueOpenVR/SteamVR-TrueOpenVR/releases)**
