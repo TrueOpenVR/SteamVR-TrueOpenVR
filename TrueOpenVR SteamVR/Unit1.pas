@@ -53,8 +53,7 @@ var
   Error: boolean;
 
   RenderWidth, RenderHeight, ScreenIndex: integer;
-  IPD, DistortionK1, DistortionK2, DistanceScaleX, DistanceScaleY,
-  DistanceBetweenEyes, ScreenOffsetX: double;
+  IPD, DistortionK1, DistortionK2: double;
 begin
   Error:=false;
   Reg:=TRegistry.Create;
@@ -75,10 +74,6 @@ begin
       IPD:=Reg.ReadFloat('IPD');
       DistortionK1:=Reg.ReadFloat('DistortionK1');
       DistortionK2:=Reg.ReadFloat('DistortionK2');
-      DistanceScaleX:=Reg.ReadFloat('DistanceScaleX');
-      DistanceScaleY:=Reg.ReadFloat('DistanceScaleY');
-      DistanceBetweenEyes:=Reg.ReadFloat('DistanceBetweenEyes');
-      ScreenOffsetX:=Reg.ReadFloat('ScreenOffsetX');
     except
       Error:=true;
     end;
@@ -115,13 +110,6 @@ begin
 
       Config.Text:=StringReplace(Config.Text, '<DISTORTIONK1>', StringReplace(FloatToStr(DistortionK1), DecimalSeparator, '.', [rfReplaceAll]), [rfReplaceAll]);
       Config.Text:=StringReplace(Config.Text, '<DISTORTIONK2>', StringReplace(FloatToStr(DistortionK2), DecimalSeparator, '.', [rfReplaceAll]), [rfReplaceAll]);
-
-      //Need to convert / Нужно конвертировать
-      //Config.Text:=StringReplace(Config.Text, '<ZOOMWIDTH>', StringReplace(FloatToStr(DistanceScaleX), DecimalSeparator, '.', [rfReplaceAll]), [rfReplaceAll]);
-      //Config.Text:=StringReplace(Config.Text, '<ZOOMHEIGHT>', StringReplace(FloatToStr(DistanceScaleY), DecimalSeparator, '.', [rfReplaceAll]), [rfReplaceAll]);
-
-      //Config.Text:=StringReplace(Config.Text, '<DISTANCEBETWEENEYES>', StringReplace(FloatToStr(DistanceBetweenEyes), DecimalSeparator, '.', [rfReplaceAll]), [rfReplaceAll]);
-      //Config.Text:=StringReplace(Config.Text, '<SCREENOFFSETX>', StringReplace(FloatToStr(ScreenOffsetX), DecimalSeparator, '.', [rfReplaceAll]), [rfReplaceAll]);
 
       Config.Text:=StringReplace(Config.Text, '<IPD>', StringReplace(FloatToStr(IPD), DecimalSeparator, '.', [rfReplaceAll]), [rfReplaceAll]);
 
