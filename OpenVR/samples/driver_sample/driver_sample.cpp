@@ -1,13 +1,18 @@
 //============ Copyright (c) Valve Corporation, All rights reserved. ============
+//====================== True Open Virtual Reality bridge =======================
 
+
+//OpenVR 1.0.11
 #include <openvr_driver.h>
 
 #include <vector>
 #include <thread>
 #include <chrono>
 
-#include <atlbase.h>
 //#include <Windows.h>
+#include <atlbase.h>
+#include "DummyController.h" //Controllers implementation from https://github.com/terminal29/Simple-OpenVR-Driver-Tutorial
+
 
 using namespace vr;
 
@@ -78,16 +83,44 @@ typedef struct _HMDData
 	double	Roll;
 } THMD, *PHMD;
 
+typedef struct _Controller
+{
+	double	X;
+	double	Y;
+	double	Z;
+	double	Yaw;
+	double	Pitch;
+	double	Roll;
+	WORD	Buttons;
+	BYTE	Trigger;
+	SHORT	ThumbX;
+	SHORT	ThumbY;
+} TController, *PController;
+
 typedef DWORD(__stdcall *_GetHMDData)(__out THMD* myHMD);
+typedef DWORD(__stdcall *_GetControllersData)(__out TController *myController, __out TController *myController2);
+//typedef DWORD(__stdcall *_SetControllerData)(__in int dwIndex, __in WORD MotorSpeed);
 typedef DWORD(__stdcall *_SetCentering)(__in int dwIndex);
 
 _GetHMDData GetHMDData;
+_GetControllersData GetControllersData;
+//_SetControllerData SetControllerData;
 _SetCentering SetCentering;
+
+#define GRIPBTN 0x0001
+#define THUMBSTICKBTN 0x0002
+#define MENUBTN 0x0004
+#define SYSTEMBTN 0x0008
+
+DummyController ctrlLeft, ctrlRight;
+DriverPose_t ctrlLeftPosRot, ctrlRightPosRot;
+VRControllerState_t ctrl1State, ctrl2State;
 
 HMODULE hDll;
 THMD myHMD;
+TController myCtrl, myCtrl2;
 
-bool HMDConnected = false;
+bool HMDConnected = false, ctrlsConnected = false;
 
 double DegToRad(double f) {
 	return f * (3.14159265358979323846 / 180);
@@ -206,8 +239,8 @@ public:
 		m_fDistortionK2 = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_DistortionK2_Float);
 		m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_ZoomWidth_Float);
 		m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_ZoomHeight_Float);
-		m_nDistanceBetweenEyes = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_DistanceBetweenEyes_Int32);
-		m_nScreenOffsetX = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_ScreenOffsetX_Int32);
+		m_nDistanceBetweenEyes = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_DistanceBetweenEyes_Int32);
+		m_nScreenOffsetX = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_ScreenOffsetX_Int32);
 		m_bDebugMode = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_DebugMode_Bool);
 
 		//DriverLog( "driver_null: Serial Number: %s\n", m_sSerialNumber.c_str() );
@@ -233,16 +266,20 @@ public:
 				status = key.QueryStringValue(_T("Library"), libPath, &libPathSize);
 			#endif
 
+				if (status == ERROR_SUCCESS)
+				{
+					HMDConnected = true;
+					hDll = LoadLibrary(libPath);
+					GetHMDData = (_GetHMDData)GetProcAddress(hDll, "GetHMDData");
+					GetControllersData = (_GetControllersData)GetProcAddress(hDll, "GetControllersData");
+					//SetControllerData = (_SetControllerData)GetProcAddress(hDll, "SetControllerData");
+					SetCentering = (_SetCentering)GetProcAddress(hDll, "SetCentering");
 
-			if (status == ERROR_SUCCESS)
-			{
-				HMDConnected = true;
-				hDll = LoadLibrary(libPath);
-				GetHMDData = (_GetHMDData)GetProcAddress(hDll, "GetHMDData");
-				SetCentering = (_SetCentering)GetProcAddress(hDll, "SetCentering");
-				
-				if (GetHMDData == NULL) HMDConnected = false;
-				if (SetCentering == NULL) HMDConnected = false;
+					if (GetHMDData == NULL) HMDConnected = false;
+					if (SetCentering == NULL) HMDConnected = false;
+
+					if (GetControllersData != NULL && GetControllersData(&myCtrl, &myCtrl2) == 1)
+						ctrlsConnected = true;
 			}
 		}
 
@@ -463,7 +500,15 @@ public:
 
 		return pose;
 	}
-	
+
+	double ConvTrigger(double n) {
+		if (n > 1) {
+			return 1;
+		}
+		else {
+			return n;
+		}
+	}
 
 	void RunFrame()
 	{
@@ -473,6 +518,122 @@ public:
 		if ( m_unObjectId != vr::k_unTrackedDeviceIndexInvalid )
 		{
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated( m_unObjectId, GetPose(), sizeof( DriverPose_t ) );
+		}
+
+		if (ctrlsConnected) {
+
+			GetControllersData(&myCtrl, &myCtrl2);
+			
+			//Controllers
+			ctrlLeftPosRot = ctrlLeft.GetPose();
+			ctrlLeftPosRot.vecPosition[0] = myCtrl.X;
+			ctrlLeftPosRot.vecPosition[1] = myCtrl.Y;
+			ctrlLeftPosRot.vecPosition[2] = myCtrl.Z;
+
+			ctrlLeftPosRot.qRotation.w = cos(DegToRad(myCtrl.Yaw) * 0.5) * cos(DegToRad(myCtrl.Roll) * 0.5) * cos(DegToRad(myCtrl.Pitch) * 0.5) + sin(DegToRad(myCtrl.Yaw) * 0.5) * sin(DegToRad(myCtrl.Roll) * 0.5) * sin(DegToRad(myCtrl.Pitch) * 0.5);
+			ctrlLeftPosRot.qRotation.x = cos(DegToRad(myCtrl.Yaw) * 0.5) * sin(DegToRad(myCtrl.Roll) * 0.5) * cos(DegToRad(myCtrl.Pitch) * 0.5) - sin(DegToRad(myCtrl.Yaw) * 0.5) * cos(DegToRad(myCtrl.Roll) * 0.5) * sin(DegToRad(myCtrl.Pitch) * 0.5);
+			ctrlLeftPosRot.qRotation.y = cos(DegToRad(myCtrl.Yaw) * 0.5) * cos(DegToRad(myCtrl.Roll) * 0.5) * sin(DegToRad(myCtrl.Pitch) * 0.5) + sin(DegToRad(myCtrl.Yaw) * 0.5) * sin(DegToRad(myCtrl.Roll) * 0.5) * cos(DegToRad(myCtrl.Pitch) * 0.5);
+			ctrlLeftPosRot.qRotation.z = sin(DegToRad(myCtrl.Yaw) * 0.5) * cos(DegToRad(myCtrl.Roll) * 0.5) * cos(DegToRad(myCtrl.Pitch) * 0.5) - cos(DegToRad(myCtrl.Yaw) * 0.5) * sin(DegToRad(myCtrl.Roll) * 0.5) * sin(DegToRad(myCtrl.Pitch) * 0.5);
+
+			ctrlLeft.updateControllerPose(ctrlLeftPosRot);
+			VRServerDriverHost()->TrackedDevicePoseUpdated(ctrlLeft.getObjectID(), ctrlLeft.GetPose(), sizeof(DriverPose_t));
+
+			//Buttons controller 1
+			if (myCtrl.Buttons & GRIPBTN) {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlLeft.getObjectID(), vr::k_EButton_Grip, 0.0);
+			} else {
+				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlLeft.getObjectID(), vr::k_EButton_Grip, 0.0);
+			}
+
+			if (myCtrl.Buttons & THUMBSTICKBTN) {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlLeft.getObjectID(), vr::k_EButton_SteamVR_Touchpad, 0.0);
+			}
+			else {
+				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlLeft.getObjectID(), vr::k_EButton_SteamVR_Touchpad, 0.0);
+			}
+
+			if (myCtrl.Buttons & MENUBTN) {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlLeft.getObjectID(), vr::k_EButton_ApplicationMenu, 0.0);
+			}
+			else {
+				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlLeft.getObjectID(), vr::k_EButton_ApplicationMenu, 0.0);
+			}
+
+			if (myCtrl.Buttons & SYSTEMBTN) {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlLeft.getObjectID(), vr::k_EButton_System, 0.0);
+			}
+			else {
+				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlLeft.getObjectID(), vr::k_EButton_System, 0.0);
+			}
+
+			ctrl1State = ctrlLeft.GetControllerState();
+			if (myCtrl.Trigger > 0) {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlLeft.getObjectID(), vr::k_EButton_SteamVR_Trigger, 0.0);
+				ctrl1State.rAxis[1].x = ConvTrigger(myCtrl.Trigger * 0.003921568627451);
+				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlLeft.getObjectID(), 1, ctrl1State.rAxis[1]);
+			}
+			else {
+				ctrl1State.rAxis[1].x = 0.0f;
+				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlLeft.getObjectID(), 1, ctrl1State.rAxis[1]);
+				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlLeft.getObjectID(), vr::k_EButton_SteamVR_Trigger, 0.0);
+			}
+
+			//TouchPad axis ???
+
+			//Controller 2
+			ctrlRightPosRot = ctrlRight.GetPose();
+			ctrlRightPosRot.vecPosition[0] = myCtrl2.X;
+			ctrlRightPosRot.vecPosition[1] = myCtrl2.Y;
+			ctrlRightPosRot.vecPosition[2] = myCtrl2.Z;
+
+			ctrlRightPosRot.qRotation.w = cos(DegToRad(myCtrl2.Yaw) * 0.5) * cos(DegToRad(myCtrl2.Roll) * 0.5) * cos(DegToRad(myCtrl2.Pitch) * 0.5) + sin(DegToRad(myCtrl2.Yaw) * 0.5) * sin(DegToRad(myCtrl2.Roll) * 0.5) * sin(DegToRad(myCtrl2.Pitch) * 0.5);
+			ctrlRightPosRot.qRotation.x = cos(DegToRad(myCtrl2.Yaw) * 0.5) * sin(DegToRad(myCtrl2.Roll) * 0.5) * cos(DegToRad(myCtrl2.Pitch) * 0.5) - sin(DegToRad(myCtrl2.Yaw) * 0.5) * cos(DegToRad(myCtrl2.Roll) * 0.5) * sin(DegToRad(myCtrl2.Pitch) * 0.5);
+			ctrlRightPosRot.qRotation.y = cos(DegToRad(myCtrl2.Yaw) * 0.5) * cos(DegToRad(myCtrl2.Roll) * 0.5) * sin(DegToRad(myCtrl2.Pitch) * 0.5) + sin(DegToRad(myCtrl2.Yaw) * 0.5) * sin(DegToRad(myCtrl2.Roll) * 0.5) * cos(DegToRad(myCtrl2.Pitch) * 0.5);
+			ctrlRightPosRot.qRotation.z = sin(DegToRad(myCtrl2.Yaw) * 0.5) * cos(DegToRad(myCtrl2.Roll) * 0.5) * cos(DegToRad(myCtrl2.Pitch) * 0.5) - cos(DegToRad(myCtrl2.Yaw) * 0.5) * sin(DegToRad(myCtrl2.Roll) * 0.5) * sin(DegToRad(myCtrl2.Pitch) * 0.5);
+
+			//Buttons controller 2
+			if (myCtrl2.Buttons & GRIPBTN) {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_Grip, 0.0);
+			}
+			else {
+				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_Grip, 0.0);
+			}
+
+			if (myCtrl2.Buttons & THUMBSTICKBTN) {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_SteamVR_Touchpad, 0.0);
+			}
+			else {
+				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_SteamVR_Touchpad, 0.0);
+			}
+
+			if (myCtrl2.Buttons & MENUBTN) {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_ApplicationMenu, 0.0);
+			}
+			else {
+				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_ApplicationMenu, 0.0);
+			}
+
+			if (myCtrl2.Buttons & SYSTEMBTN) {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_System, 0.0);
+			}
+			else {
+				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_System, 0.0);
+			}
+
+			ctrl2State = ctrlRight.GetControllerState();
+			if (myCtrl2.Trigger > 0) {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_SteamVR_Trigger, 0.0);
+				ctrl2State.rAxis[1].x = ConvTrigger(myCtrl2.Trigger * 0.003921568627451);
+				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlRight.getObjectID(), 1, ctrl2State.rAxis[1]);
+			}
+			else {
+				ctrl2State.rAxis[1].x = 0.0f;
+				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlRight.getObjectID(), 1, ctrl2State.rAxis[1]);
+				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_SteamVR_Trigger, 0.0);
+			}
+
+			ctrlRight.updateControllerPose(ctrlRightPosRot);
+			VRServerDriverHost()->TrackedDevicePoseUpdated(ctrlRight.getObjectID(), ctrlRight.GetPose(), sizeof(DriverPose_t));
 		}
 	}
 
@@ -539,6 +700,27 @@ EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 
 	m_pNullHmdLatest = new CSampleDeviceDriver();
 	vr::VRServerDriverHost()->TrackedDeviceAdded( m_pNullHmdLatest->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD, m_pNullHmdLatest );
+
+	DriverPose_t InitPose = { 0 };
+	InitPose.deviceIsConnected = true;
+	InitPose.poseIsValid = true;
+	InitPose.willDriftInYaw = false;
+	InitPose.shouldApplyHeadModel = false;
+	InitPose.poseTimeOffset = 0;
+	InitPose.result = ETrackingResult::TrackingResult_Running_OK;
+	InitPose.qDriverFromHeadRotation = { 1,0,0,0 };
+	InitPose.qWorldFromDriverRotation = { 1,0,0,0 };
+
+	VRControllerState_t InitState;
+	InitState.ulButtonPressed = InitState.ulButtonTouched = 0;
+
+	ctrlLeft = DummyController("example_con1", false, InitPose, InitState);
+	ctrlRight = DummyController("example_con2", true, InitPose, InitState);
+
+	VRServerDriverHost()->TrackedDeviceAdded("example_con1", vr::TrackedDeviceClass_Controller, &ctrlLeft);
+	VRServerDriverHost()->TrackedDeviceAdded("example_con2", vr::TrackedDeviceClass_Controller, &ctrlRight);
+
+
 	return VRInitError_None;
 }
 
