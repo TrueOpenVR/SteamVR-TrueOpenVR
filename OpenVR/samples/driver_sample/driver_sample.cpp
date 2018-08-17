@@ -641,7 +641,7 @@ public:
 
 			//Centring
 			if ((myCtrl2.Buttons & GRIPBTN) && (myCtrl2.Buttons & MENUBTN) && (myCtrl2.Trigger > 0))
-				SetCentering(1);
+				SetCentering(2);
 
 			//Trigger ctrl2
 			ctrl2State = ctrlRight.GetControllerState();
