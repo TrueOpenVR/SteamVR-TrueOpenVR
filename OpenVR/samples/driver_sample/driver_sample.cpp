@@ -505,7 +505,12 @@ public:
 		if (n > 1) {
 			return 1;
 		}
-		else {
+		else if (n < -1)
+		{
+			return -1;
+		}
+		else 
+		{
 			return n;
 		}
 	}
@@ -565,6 +570,10 @@ public:
 			else {
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlLeft.getObjectID(), vr::k_EButton_System, 0.0);
 			}
+
+			//Centring
+			if ((myCtrl.Buttons & GRIPBTN) && (myCtrl.Buttons & MENUBTN) && (myCtrl.Trigger > 0))
+				SetCentering(1);
 
 			//Trigger ctrl1
 			ctrl1State = ctrlLeft.GetControllerState();
@@ -629,6 +638,10 @@ public:
 			else {
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_System, 0.0);
 			}
+
+			//Centring
+			if ((myCtrl2.Buttons & GRIPBTN) && (myCtrl2.Buttons & MENUBTN) && (myCtrl2.Trigger > 0))
+				SetCentering(1);
 
 			//Trigger ctrl2
 			ctrl2State = ctrlRight.GetControllerState();
