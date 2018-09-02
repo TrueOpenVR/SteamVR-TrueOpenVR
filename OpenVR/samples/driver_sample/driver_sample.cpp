@@ -552,37 +552,29 @@ public:
 
 			if (myCtrl.Buttons & THUMBSTICKBTN) {
 				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlLeft.getObjectID(), vr::k_EButton_SteamVR_Touchpad, 0.0);
-			}
-			else {
+			} else {
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlLeft.getObjectID(), vr::k_EButton_SteamVR_Touchpad, 0.0);
 			}
 
 			if (myCtrl.Buttons & MENUBTN) {
 				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlLeft.getObjectID(), vr::k_EButton_ApplicationMenu, 0.0);
-			}
-			else {
+			} else {
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlLeft.getObjectID(), vr::k_EButton_ApplicationMenu, 0.0);
 			}
 
 			if (myCtrl.Buttons & SYSTEMBTN) {
 				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlLeft.getObjectID(), vr::k_EButton_System, 0.0);
-			}
-			else {
+			} else {
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlLeft.getObjectID(), vr::k_EButton_System, 0.0);
 			}
-
-			//Centring
-			if ((myCtrl.Buttons & GRIPBTN) && (myCtrl.Buttons & MENUBTN) && (myCtrl.Trigger > 0))
-				SetCentering(1);
 
 			//Trigger ctrl1
 			ctrl1State = ctrlLeft.GetControllerState();
 			if (myCtrl.Trigger > 0) {
-				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlLeft.getObjectID(), vr::k_EButton_SteamVR_Trigger, 0.0);
 				ctrl1State.rAxis[1].x = ConvAxis(myCtrl.Trigger * 0.003921568627451);
 				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlLeft.getObjectID(), 1, ctrl1State.rAxis[1]);
-			}
-			else {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlLeft.getObjectID(), vr::k_EButton_SteamVR_Trigger, 0.0);
+			} else {
 				ctrl1State.rAxis[1].x = 0.0f;
 				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlLeft.getObjectID(), 1, ctrl1State.rAxis[1]);
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlLeft.getObjectID(), vr::k_EButton_SteamVR_Trigger, 0.0);
@@ -591,13 +583,16 @@ public:
 			//TouchPad ctrl1
 			if (myCtrl.ThumbX != 0 || myCtrl.ThumbY != 0) {
 				ctrl1State.rAxis[0].x = ConvAxis(myCtrl.ThumbX * 0.00003051758);
-				ctrl1State.rAxis[0].y = ConvAxis(myCtrl.ThumbX * 0.00003051758);
+				ctrl1State.rAxis[0].y = ConvAxis(myCtrl.ThumbY * 0.00003051758);
 				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlLeft.getObjectID(), 0, ctrl1State.rAxis[0]);
-			} else{
+				VRServerDriverHost()->TrackedDeviceButtonTouched(ctrlLeft.getObjectID(), vr::k_EButton_Axis0, 0.0);
+			} else {
 				ctrl1State.rAxis[0].x = 0.0f;
 				ctrl1State.rAxis[0].y = 0.0f;
 				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlLeft.getObjectID(), 0, ctrl1State.rAxis[0]);
+				VRServerDriverHost()->TrackedDeviceButtonUntouched(ctrlLeft.getObjectID(), vr::k_EButton_Axis0, 0.0);
 			}
+			
 
 			//Controller 2
 			ctrlRightPosRot = ctrlRight.GetPose();
@@ -613,44 +608,35 @@ public:
 			//Buttons controller 2
 			if (myCtrl2.Buttons & GRIPBTN) {
 				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_Grip, 0.0);
-			}
-			else {
+			} else {
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_Grip, 0.0);
 			}
 
 			if (myCtrl2.Buttons & THUMBSTICKBTN) {
 				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_SteamVR_Touchpad, 0.0);
-			}
-			else {
+			} else {
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_SteamVR_Touchpad, 0.0);
 			}
 
 			if (myCtrl2.Buttons & MENUBTN) {
 				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_ApplicationMenu, 0.0);
-			}
-			else {
+			} else {
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_ApplicationMenu, 0.0);
 			}
 
 			if (myCtrl2.Buttons & SYSTEMBTN) {
 				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_System, 0.0);
-			}
-			else {
+			} else {
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_System, 0.0);
 			}
-
-			//Centring
-			if ((myCtrl2.Buttons & GRIPBTN) && (myCtrl2.Buttons & MENUBTN) && (myCtrl2.Trigger > 0))
-				SetCentering(2);
 
 			//Trigger ctrl2
 			ctrl2State = ctrlRight.GetControllerState();
 			if (myCtrl2.Trigger > 0) {
-				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_SteamVR_Trigger, 0.0);
 				ctrl2State.rAxis[1].x = ConvAxis(myCtrl2.Trigger * 0.003921568627451);
 				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlRight.getObjectID(), 1, ctrl2State.rAxis[1]);
-			}
-			else {
+				VRServerDriverHost()->TrackedDeviceButtonPressed(ctrlRight.getObjectID(), vr::k_EButton_SteamVR_Trigger, 0.0);
+			} else {
 				ctrl2State.rAxis[1].x = 0.0f;
 				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlRight.getObjectID(), 1, ctrl2State.rAxis[1]);
 				VRServerDriverHost()->TrackedDeviceButtonUnpressed(ctrlRight.getObjectID(), vr::k_EButton_SteamVR_Trigger, 0.0);
@@ -659,17 +645,29 @@ public:
 			//TouchPad ctrl2
 			if (myCtrl2.ThumbX != 0 || myCtrl2.ThumbY != 0) {
 				ctrl2State.rAxis[0].x = ConvAxis(myCtrl2.ThumbX * 0.00003051758);
-				ctrl2State.rAxis[0].y = ConvAxis(myCtrl2.ThumbX * 0.00003051758);
+				ctrl2State.rAxis[0].y = ConvAxis(myCtrl2.ThumbY * 0.00003051758);
 				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlRight.getObjectID(), 0, ctrl2State.rAxis[0]);
+				VRServerDriverHost()->TrackedDeviceButtonTouched(ctrlRight.getObjectID(), vr::k_EButton_Axis0, 0.0);
 			}
-			else {
+			else
+			{
 				ctrl2State.rAxis[0].x = 0.0f;
 				ctrl2State.rAxis[0].y = 0.0f;
 				VRServerDriverHost()->TrackedDeviceAxisUpdated(ctrlRight.getObjectID(), 0, ctrl2State.rAxis[0]);
+				VRServerDriverHost()->TrackedDeviceButtonUntouched(ctrlRight.getObjectID(), vr::k_EButton_Axis0, 0.0);
 			}
 
 			ctrlRight.updateControllerPose(ctrlRightPosRot);
 			VRServerDriverHost()->TrackedDevicePoseUpdated(ctrlRight.getObjectID(), ctrlRight.GetPose(), sizeof(DriverPose_t));
+
+			//Centring
+			if ((myCtrl.Buttons & SYSTEMBTN) && (myCtrl.Buttons & GRIPBTN) && (myCtrl2.Buttons & SYSTEMBTN) && (myCtrl2.Buttons & GRIPBTN))
+			{
+				SetCentering(0);
+				SetCentering(1);
+				SetCentering(2);
+			}
+				
 		}
 	}
 
@@ -753,9 +751,10 @@ EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 	ctrlLeft = DummyController("example_con1", false, InitPose, InitState);
 	ctrlRight = DummyController("example_con2", true, InitPose, InitState);
 
-	VRServerDriverHost()->TrackedDeviceAdded("example_con1", vr::TrackedDeviceClass_Controller, &ctrlLeft);
-	VRServerDriverHost()->TrackedDeviceAdded("example_con2", vr::TrackedDeviceClass_Controller, &ctrlRight);
-
+	if (ctrlsConnected) {
+		VRServerDriverHost()->TrackedDeviceAdded("example_con1", vr::TrackedDeviceClass_Controller, &ctrlLeft);
+		VRServerDriverHost()->TrackedDeviceAdded("example_con2", vr::TrackedDeviceClass_Controller, &ctrlRight);
+	}
 
 	return VRInitError_None;
 }
