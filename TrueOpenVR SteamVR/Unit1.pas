@@ -8,16 +8,18 @@ uses
 
 type
   TMain = class(TForm)
-    ApplyBtn: TButton;
+    InstallBtn: TButton;
     CancelBtn: TButton;
     AboutBtn: TButton;
     XPManifest: TXPManifest;
     DbgMdCb: TCheckBox;
     DbgMdLbl: TLabel;
+    UninstallBtn: TButton;
     procedure FormCreate(Sender: TObject);
     procedure AboutBtnClick(Sender: TObject);
-    procedure ApplyBtnClick(Sender: TObject);
+    procedure InstallBtnClick(Sender: TObject);
     procedure CancelBtnClick(Sender: TObject);
+    procedure UninstallBtnClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -26,14 +28,25 @@ type
 
 var
   Main: TMain;
+  SteamPath: string;
 
 implementation
 
 {$R *.dfm}
 
 procedure TMain.FormCreate(Sender: TObject);
+var
+  Reg: TRegistry;
 begin
   Application.Title:=Caption;
+
+  Reg:=TRegistry.Create;
+  //Steam
+  Reg.RootKey:=HKEY_CURRENT_USER;
+  if (Reg.OpenKey('\Software\Valve\Steam', false)) then
+    SteamPath:=StringReplace(Reg.ReadString('SteamPath'), '/', '\', [rfReplaceAll]);
+  Reg.CloseKey;
+  Reg.Free;
 
   DbgMdLbl.Caption:=DbgMdLbl.Caption + #13#10 + 'Windowed borderless fullscreen' + #13#10 + 'with lock to 30 FPS';
 end;
@@ -45,10 +58,9 @@ begin
   'r57zone@gmail.com', PChar(Caption), MB_ICONINFORMATION);
 end;
 
-procedure TMain.ApplyBtnClick(Sender: TObject);
+procedure TMain.InstallBtnClick(Sender: TObject);
 var
   Reg: TRegistry;
-  SteamPath: string;
   Config: TStringList;
   Error: boolean;
 
@@ -56,13 +68,8 @@ var
   IPD, DistortionK1, DistortionK2: double;
 begin
   Error:=false;
-  Reg:=TRegistry.Create;
-  //Steam
-  Reg.RootKey:=HKEY_CURRENT_USER;
-  if (Reg.OpenKey('\Software\Valve\Steam', false)) then
-    SteamPath:=StringReplace(Reg.ReadString('SteamPath'), '/', '\', [rfReplaceAll]);
-  Reg.CloseKey;
 
+  Reg:=TRegistry.Create;
   //TrueOpenVR
   Reg.RootKey:=HKEY_CURRENT_USER;
   if Reg.OpenKey('\Software\TrueOpenVR', false) then begin
@@ -133,7 +140,7 @@ begin
       end;
 
     if Error = false then
-      Application.MessageBox('Done', PChar(Caption), MB_ICONINFORMATION);
+      Application.MessageBox('Installed', PChar(Caption), MB_ICONINFORMATION);
 
   end else
     Application.MessageBox('Steam not found. Please install Steam and SteamVR', PChar(Caption), MB_ICONERROR);
@@ -145,6 +152,16 @@ end;
 procedure TMain.CancelBtnClick(Sender: TObject);
 begin
   Close;
+end;
+
+procedure TMain.UninstallBtnClick(Sender: TObject);
+begin
+  if DirectoryExists(SteamPath) then begin
+    if FileExists(SteamPath + '\config\steamvr.vrsettings') then
+      DeleteFile(SteamPath + '\config\steamvr.vrsettings');
+      Application.MessageBox('Uninstalled', PChar(Caption), MB_ICONINFORMATION);
+  end else
+    Application.MessageBox('Steam not found. Please install Steam and SteamVR', PChar(Caption), MB_ICONERROR);
 end;
 
 end.
