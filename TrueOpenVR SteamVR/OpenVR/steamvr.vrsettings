@@ -13,6 +13,7 @@
       "windowHeight" : <WINDOWHEIGHT>,
       "windowX" : <WINDOWX>,
       "windowY" : <WINDOWY>,
+	  "displayFrequency" : 60,
 	  "ipd" : <IPD>,
 	  "DistortionK1" : <DISTORTIONK1>,
 	  "DistortionK2" : <DISTORTIONK2>,
@@ -24,6 +25,7 @@
    },
    "steamvr" : {
       "activateMultipleDrivers" : true,
+	  "allowAsyncReprojection" : false,
       "directMode" : false,
       "enableHomeApp" : false,
       "forcedDriver" : "null",

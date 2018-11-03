@@ -123,7 +123,7 @@ double DegToRad(double f) {
 // Purpose:
 //-----------------------------------------------------------------------------
 
-class CWatchdogDriver_Sample : public IVRWatchdogProvider
+/*class CWatchdogDriver_Sample : public IVRWatchdogProvider
 {
 public:
 	CWatchdogDriver_Sample()
@@ -156,10 +156,8 @@ EVRInitError CWatchdogDriver_Sample::Init( vr::IVRDriverContext *pDriverContext 
 
 void CWatchdogDriver_Sample::Cleanup()
 {
-	if (hDll != NULL) FreeLibrary(hDll);
-	hDll = nullptr;
 	//CleanupDriverLog();
-}
+}*/
 
 
 //-----------------------------------------------------------------------------
@@ -850,10 +848,12 @@ void CServerDriver_Sample::Cleanup()
 	//CleanupDriverLog();
 	delete m_pNullHmdLatest;
 	m_pNullHmdLatest = NULL;
-	delete m_pController;
-	m_pController = NULL;
-	delete m_pController2;
-	m_pController2 = NULL;
+	if (ctrlsConnected) {
+		delete m_pController;
+		m_pController = NULL;
+		delete m_pController2;
+		m_pController2 = NULL;
+	}
 }
 
 
@@ -899,10 +899,10 @@ HMD_DLL_EXPORT void *HmdDriverFactory( const char *pInterfaceName, int *pReturnC
 	{
 		return &g_serverDriverNull;
 	}
-	if( 0 == strcmp( IVRWatchdogProvider_Version, pInterfaceName ) )
+	/*if( 0 == strcmp( IVRWatchdogProvider_Version, pInterfaceName ) )
 	{
 		return &g_watchdogDriverNull;
-	}
+	}*/
 
 	if( pReturnCode )
 		*pReturnCode = VRInitError_Init_InterfaceNotFound;
