@@ -88,15 +88,18 @@ typedef struct _Controller
 	double	Yaw;
 	double	Pitch;
 	double	Roll;
-	WORD	Buttons;
-	BYTE	Trigger;
-	SHORT	ThumbX;
-	SHORT	ThumbY;
+	unsigned short	Buttons;
+	float	Trigger;
+	float	AxisX;
+	float	AxisY;
 } TController, *PController;
 
-typedef DWORD(__stdcall *_GetHMDData)(__out THMD* myHMD);
-typedef DWORD(__stdcall *_GetControllersData)(__out TController *myController, __out TController *myController2);
-typedef DWORD(__stdcall *_SetControllerData)(__in int dwIndex, __in WORD MotorSpeed);
+#define TOVR_SUCCESS 0
+#define TOVR_FAILURE 1
+
+typedef DWORD(__stdcall *_GetHMDData)(__out THMD *HMD);
+typedef DWORD(__stdcall *_GetControllersData)(__out TController *FirstController, __out TController *SecondController);
+typedef DWORD(__stdcall *_SetControllerData)(__in int dwIndex, __in unsigned char MotorSpeed);
 typedef DWORD(__stdcall *_SetCentering)(__in int dwIndex);
 
 _GetHMDData GetHMDData;
@@ -104,14 +107,16 @@ _GetControllersData GetControllersData;
 _SetControllerData SetControllerData;
 _SetCentering SetCentering;
 
-#define GRIPBTN 0x0001
-#define THUMBSTICKBTN 0x0002
-#define MENUBTN 0x0004
-#define SYSTEMBTN 0x0008
+#define GRIP_BTN	0x0001
+#define THUMB_BTN	0x0002
+#define A_BTN		0x0004
+#define B_BTN		0x0008
+#define MENU_BTN	0x0010
+#define SYS_BTN		0x0020
 
 HMODULE hDll;
-THMD myHMD;
-TController myCtrl, myCtrl2;
+THMD MyHMD;
+TController MyCtrl, MyCtrl2;
 
 bool HMDConnected = false, ctrlsConnected = false;
 
@@ -232,7 +237,7 @@ public:
 				if (GetHMDData == NULL) HMDConnected = false;
 				if (SetCentering == NULL) HMDConnected = false;
 
-				if (GetControllersData != NULL && SetControllerData !=NULL && GetControllersData(&myCtrl, &myCtrl2) == 1)
+				if (GetControllersData != NULL && SetControllerData !=NULL && GetControllersData(&MyCtrl, &MyCtrl2) == TOVR_SUCCESS)
 					ctrlsConnected = true;
 			}
 		}
@@ -449,18 +454,18 @@ public:
 			if ((GetAsyncKeyState(VK_NUMPAD5) & 0x8000) != 0 || ((GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 && (GetAsyncKeyState(VK_MENU) & 0x8000) != 0 && (GetAsyncKeyState(82) & 0x8000) != 0))
 				SetCentering(0);
 
-			GetHMDData(&myHMD);
+			GetHMDData(&MyHMD);
 
 			//Set head tracking rotation
-			pose.qRotation.w = cos(DegToRad(myHMD.Yaw) * 0.5) * cos(DegToRad(myHMD.Roll) * 0.5) * cos(DegToRad(myHMD.Pitch) * 0.5) + sin(DegToRad(myHMD.Yaw) * 0.5) * sin(DegToRad(myHMD.Roll) * 0.5) * sin(DegToRad(myHMD.Pitch) * 0.5);
-			pose.qRotation.x = cos(DegToRad(myHMD.Yaw) * 0.5) * sin(DegToRad(myHMD.Roll) * 0.5) * cos(DegToRad(myHMD.Pitch) * 0.5) - sin(DegToRad(myHMD.Yaw) * 0.5) * cos(DegToRad(myHMD.Roll) * 0.5) * sin(DegToRad(myHMD.Pitch) * 0.5);
-			pose.qRotation.y = cos(DegToRad(myHMD.Yaw) * 0.5) * cos(DegToRad(myHMD.Roll) * 0.5) * sin(DegToRad(myHMD.Pitch) * 0.5) + sin(DegToRad(myHMD.Yaw) * 0.5) * sin(DegToRad(myHMD.Roll) * 0.5) * cos(DegToRad(myHMD.Pitch) * 0.5);
-			pose.qRotation.z = sin(DegToRad(myHMD.Yaw) * 0.5) * cos(DegToRad(myHMD.Roll) * 0.5) * cos(DegToRad(myHMD.Pitch) * 0.5) - cos(DegToRad(myHMD.Yaw) * 0.5) * sin(DegToRad(myHMD.Roll) * 0.5) * sin(DegToRad(myHMD.Pitch) * 0.5);
+			pose.qRotation.w = cos(DegToRad(MyHMD.Yaw) * 0.5) * cos(DegToRad(MyHMD.Roll) * 0.5) * cos(DegToRad(MyHMD.Pitch) * 0.5) + sin(DegToRad(MyHMD.Yaw) * 0.5) * sin(DegToRad(MyHMD.Roll) * 0.5) * sin(DegToRad(MyHMD.Pitch) * 0.5);
+			pose.qRotation.x = cos(DegToRad(MyHMD.Yaw) * 0.5) * sin(DegToRad(MyHMD.Roll) * 0.5) * cos(DegToRad(MyHMD.Pitch) * 0.5) - sin(DegToRad(MyHMD.Yaw) * 0.5) * cos(DegToRad(MyHMD.Roll) * 0.5) * sin(DegToRad(MyHMD.Pitch) * 0.5);
+			pose.qRotation.y = cos(DegToRad(MyHMD.Yaw) * 0.5) * cos(DegToRad(MyHMD.Roll) * 0.5) * sin(DegToRad(MyHMD.Pitch) * 0.5) + sin(DegToRad(MyHMD.Yaw) * 0.5) * sin(DegToRad(MyHMD.Roll) * 0.5) * cos(DegToRad(MyHMD.Pitch) * 0.5);
+			pose.qRotation.z = sin(DegToRad(MyHMD.Yaw) * 0.5) * cos(DegToRad(MyHMD.Roll) * 0.5) * cos(DegToRad(MyHMD.Pitch) * 0.5) - cos(DegToRad(MyHMD.Yaw) * 0.5) * sin(DegToRad(MyHMD.Roll) * 0.5) * sin(DegToRad(MyHMD.Pitch) * 0.5);
 
 			//Set position tracking
-			pose.vecPosition[0] = myHMD.X;
-			pose.vecPosition[1] = myHMD.Y;
-			pose.vecPosition[2] = myHMD.Z;
+			pose.vecPosition[0] = MyHMD.X;
+			pose.vecPosition[1] = MyHMD.Y;
+			pose.vecPosition[2] = MyHMD.Z;
 		}
 
 		return pose;
@@ -653,43 +658,29 @@ public:
 		//Controllers positions and rotations
 		if (ControllerIndex == 1) {
 
-			pose.vecPosition[0] = myCtrl.X;
-			pose.vecPosition[1] = myCtrl.Y;
-			pose.vecPosition[2] = myCtrl.Z;
+			pose.vecPosition[0] = MyCtrl.X;
+			pose.vecPosition[1] = MyCtrl.Y;
+			pose.vecPosition[2] = MyCtrl.Z;
 
 			//Convert yaw, pitch, roll to quaternion
-			pose.qRotation.w = cos(DegToRad(myCtrl.Yaw) * 0.5) * cos(DegToRad(myCtrl.Roll) * 0.5) * cos(DegToRad(myCtrl.Pitch) * 0.5) + sin(DegToRad(myCtrl.Yaw) * 0.5) * sin(DegToRad(myCtrl.Roll) * 0.5) * sin(DegToRad(myCtrl.Pitch) * 0.5);
-			pose.qRotation.x = cos(DegToRad(myCtrl.Yaw) * 0.5) * sin(DegToRad(myCtrl.Roll) * 0.5) * cos(DegToRad(myCtrl.Pitch) * 0.5) - sin(DegToRad(myCtrl.Yaw) * 0.5) * cos(DegToRad(myCtrl.Roll) * 0.5) * sin(DegToRad(myCtrl.Pitch) * 0.5);
-			pose.qRotation.y = cos(DegToRad(myCtrl.Yaw) * 0.5) * cos(DegToRad(myCtrl.Roll) * 0.5) * sin(DegToRad(myCtrl.Pitch) * 0.5) + sin(DegToRad(myCtrl.Yaw) * 0.5) * sin(DegToRad(myCtrl.Roll) * 0.5) * cos(DegToRad(myCtrl.Pitch) * 0.5);
-			pose.qRotation.z = sin(DegToRad(myCtrl.Yaw) * 0.5) * cos(DegToRad(myCtrl.Roll) * 0.5) * cos(DegToRad(myCtrl.Pitch) * 0.5) - cos(DegToRad(myCtrl.Yaw) * 0.5) * sin(DegToRad(myCtrl.Roll) * 0.5) * sin(DegToRad(myCtrl.Pitch) * 0.5);
+			pose.qRotation.w = cos(DegToRad(MyCtrl.Yaw) * 0.5) * cos(DegToRad(MyCtrl.Roll) * 0.5) * cos(DegToRad(MyCtrl.Pitch) * 0.5) + sin(DegToRad(MyCtrl.Yaw) * 0.5) * sin(DegToRad(MyCtrl.Roll) * 0.5) * sin(DegToRad(MyCtrl.Pitch) * 0.5);
+			pose.qRotation.x = cos(DegToRad(MyCtrl.Yaw) * 0.5) * sin(DegToRad(MyCtrl.Roll) * 0.5) * cos(DegToRad(MyCtrl.Pitch) * 0.5) - sin(DegToRad(MyCtrl.Yaw) * 0.5) * cos(DegToRad(MyCtrl.Roll) * 0.5) * sin(DegToRad(MyCtrl.Pitch) * 0.5);
+			pose.qRotation.y = cos(DegToRad(MyCtrl.Yaw) * 0.5) * cos(DegToRad(MyCtrl.Roll) * 0.5) * sin(DegToRad(MyCtrl.Pitch) * 0.5) + sin(DegToRad(MyCtrl.Yaw) * 0.5) * sin(DegToRad(MyCtrl.Roll) * 0.5) * cos(DegToRad(MyCtrl.Pitch) * 0.5);
+			pose.qRotation.z = sin(DegToRad(MyCtrl.Yaw) * 0.5) * cos(DegToRad(MyCtrl.Roll) * 0.5) * cos(DegToRad(MyCtrl.Pitch) * 0.5) - cos(DegToRad(MyCtrl.Yaw) * 0.5) * sin(DegToRad(MyCtrl.Roll) * 0.5) * sin(DegToRad(MyCtrl.Pitch) * 0.5);
 
 		} else { 
 			//Controller2
-			pose.vecPosition[0] = myCtrl2.X;
-			pose.vecPosition[1] = myCtrl2.Y;
-			pose.vecPosition[2] = myCtrl2.Z;
+			pose.vecPosition[0] = MyCtrl2.X;
+			pose.vecPosition[1] = MyCtrl2.Y;
+			pose.vecPosition[2] = MyCtrl2.Z;
 
-			pose.qRotation.w = cos(DegToRad(myCtrl2.Yaw) * 0.5) * cos(DegToRad(myCtrl2.Roll) * 0.5) * cos(DegToRad(myCtrl2.Pitch) * 0.5) + sin(DegToRad(myCtrl2.Yaw) * 0.5) * sin(DegToRad(myCtrl2.Roll) * 0.5) * sin(DegToRad(myCtrl2.Pitch) * 0.5);
-			pose.qRotation.x = cos(DegToRad(myCtrl2.Yaw) * 0.5) * sin(DegToRad(myCtrl2.Roll) * 0.5) * cos(DegToRad(myCtrl2.Pitch) * 0.5) - sin(DegToRad(myCtrl2.Yaw) * 0.5) * cos(DegToRad(myCtrl2.Roll) * 0.5) * sin(DegToRad(myCtrl2.Pitch) * 0.5);
-			pose.qRotation.y = cos(DegToRad(myCtrl2.Yaw) * 0.5) * cos(DegToRad(myCtrl2.Roll) * 0.5) * sin(DegToRad(myCtrl2.Pitch) * 0.5) + sin(DegToRad(myCtrl2.Yaw) * 0.5) * sin(DegToRad(myCtrl2.Roll) * 0.5) * cos(DegToRad(myCtrl2.Pitch) * 0.5);
-			pose.qRotation.z = sin(DegToRad(myCtrl2.Yaw) * 0.5) * cos(DegToRad(myCtrl2.Roll) * 0.5) * cos(DegToRad(myCtrl2.Pitch) * 0.5) - cos(DegToRad(myCtrl2.Yaw) * 0.5) * sin(DegToRad(myCtrl2.Roll) * 0.5) * sin(DegToRad(myCtrl2.Pitch) * 0.5);
+			pose.qRotation.w = cos(DegToRad(MyCtrl2.Yaw) * 0.5) * cos(DegToRad(MyCtrl2.Roll) * 0.5) * cos(DegToRad(MyCtrl2.Pitch) * 0.5) + sin(DegToRad(MyCtrl2.Yaw) * 0.5) * sin(DegToRad(MyCtrl2.Roll) * 0.5) * sin(DegToRad(MyCtrl2.Pitch) * 0.5);
+			pose.qRotation.x = cos(DegToRad(MyCtrl2.Yaw) * 0.5) * sin(DegToRad(MyCtrl2.Roll) * 0.5) * cos(DegToRad(MyCtrl2.Pitch) * 0.5) - sin(DegToRad(MyCtrl2.Yaw) * 0.5) * cos(DegToRad(MyCtrl2.Roll) * 0.5) * sin(DegToRad(MyCtrl2.Pitch) * 0.5);
+			pose.qRotation.y = cos(DegToRad(MyCtrl2.Yaw) * 0.5) * cos(DegToRad(MyCtrl2.Roll) * 0.5) * sin(DegToRad(MyCtrl2.Pitch) * 0.5) + sin(DegToRad(MyCtrl2.Yaw) * 0.5) * sin(DegToRad(MyCtrl2.Roll) * 0.5) * cos(DegToRad(MyCtrl2.Pitch) * 0.5);
+			pose.qRotation.z = sin(DegToRad(MyCtrl2.Yaw) * 0.5) * cos(DegToRad(MyCtrl2.Roll) * 0.5) * cos(DegToRad(MyCtrl2.Pitch) * 0.5) - cos(DegToRad(MyCtrl2.Yaw) * 0.5) * sin(DegToRad(MyCtrl2.Roll) * 0.5) * sin(DegToRad(MyCtrl2.Pitch) * 0.5);
 		}
 
 		return pose;
-	}
-
-	double ConvAxis(double n) {
-		if (n > 1) {
-			return 1;
-		}
-		else if (n < -1)
-		{
-			return -1;
-		}
-		else
-		{
-			return n;
-		}
 	}
 
 	void RunFrame()
@@ -701,44 +692,44 @@ public:
 		
 		if (ControllerIndex == 1) {
 
-			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[0], (myCtrl.Buttons & MENUBTN) != 0, 0); //Application Menu
-			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[1], (myCtrl.Buttons & GRIPBTN) != 0, 0); //Grip
-			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[2], (myCtrl.Buttons & SYSTEMBTN) != 0, 0); //System
-			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[3], (myCtrl.Buttons & THUMBSTICKBTN) != 0, 0); //Trackpad
+			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[0], (MyCtrl.Buttons & MENU_BTN) != 0, 0); //Application Menu
+			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[1], (MyCtrl.Buttons & GRIP_BTN) != 0, 0); //Grip
+			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[2], (MyCtrl.Buttons & SYS_BTN) != 0, 0); //System
+			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[3], (MyCtrl.Buttons & THUMB_BTN) != 0, 0); //Trackpad
 
-			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[0], ConvAxis(myCtrl.ThumbX * 0.00003051758), 0); //Trackpad x
-			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[1], ConvAxis(myCtrl.ThumbY * 0.00003051758), 0); //Trackpad y
+			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[0], MyCtrl.AxisX, 0); //Trackpad x
+			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[1], MyCtrl.AxisY, 0); //Trackpad y
 
-			if (myCtrl.ThumbX != 0 || myCtrl.ThumbY != 0) {
+			if (MyCtrl.AxisX != 0 || MyCtrl.AxisY != 0) {
 				vr::VRDriverInput()->UpdateBooleanComponent(HButtons[4], 1, 0); //Trackpad touch
 			}
 			else {
 				vr::VRDriverInput()->UpdateBooleanComponent(HButtons[4], 0, 0); //Trackpad touch
 			}
 
-			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[2], ConvAxis(myCtrl.Trigger * 0.003921568627451), 0); //Trigger
+			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[2], MyCtrl.Trigger, 0); //Trigger
 		} else {
 			//Controller2
-			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[0], (myCtrl2.Buttons & MENUBTN) != 0, 0); //Application Menu
-			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[1], (myCtrl2.Buttons & GRIPBTN) != 0, 0); //Grip
-			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[2], (myCtrl2.Buttons & SYSTEMBTN) != 0, 0); //System
-			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[3], (myCtrl2.Buttons & THUMBSTICKBTN) != 0, 0); //Trackpad
+			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[0], (MyCtrl2.Buttons & MENU_BTN) != 0, 0); //Application Menu
+			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[1], (MyCtrl2.Buttons & GRIP_BTN) != 0, 0); //Grip
+			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[2], (MyCtrl2.Buttons & SYS_BTN) != 0, 0); //System
+			vr::VRDriverInput()->UpdateBooleanComponent(HButtons[3], (MyCtrl2.Buttons & THUMB_BTN) != 0, 0); //Trackpad
 
-			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[0], ConvAxis(myCtrl2.ThumbX * 0.00003051758), 0); //Trackpad x
-			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[1], ConvAxis(myCtrl2.ThumbY * 0.00003051758), 0); //Trackpad y
+			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[0], MyCtrl2.AxisX, 0); //Trackpad x
+			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[1], MyCtrl2.AxisY, 0); //Trackpad y
 
-			if (myCtrl2.ThumbX != 0 || myCtrl2.ThumbY != 0) {
+			if (MyCtrl2.AxisX != 0 || MyCtrl2.AxisY != 0) {
 				vr::VRDriverInput()->UpdateBooleanComponent(HButtons[4], 1, 0); //Trackpad touch
 			}
 			else {
 				vr::VRDriverInput()->UpdateBooleanComponent(HButtons[4], 0, 0); //Trackpad touch
 			}
 
-			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[2], ConvAxis(myCtrl2.Trigger * 0.003921568627451), 0); //Trigger
+			vr::VRDriverInput()->UpdateScalarComponent(HAnalog[2], MyCtrl2.Trigger, 0); //Trigger
 		}
 
 		//Centring
-		if ((myCtrl.Buttons & SYSTEMBTN) && (myCtrl.Buttons & GRIPBTN) && (myCtrl2.Buttons & SYSTEMBTN) && (myCtrl2.Buttons & GRIPBTN))
+		if ((MyCtrl.Buttons & SYS_BTN) && (MyCtrl.Buttons & GRIP_BTN) && (MyCtrl2.Buttons & SYS_BTN) && (MyCtrl2.Buttons & GRIP_BTN))
 		{
 			SetCentering(0);
 			SetCentering(1);
@@ -761,7 +752,7 @@ public:
 		{
 			if ( vrEvent.data.hapticVibration.componentHandle == m_compHaptic )
 			{
-				SetControllerData(ControllerIndex, 21845); 
+				SetControllerData(ControllerIndex, 100); 
 				// This is where you would send a signal to your hardware to trigger actual haptic feedback
 			}
 		}
@@ -864,7 +855,7 @@ void CServerDriver_Sample::RunFrame()
 		m_pNullHmdLatest->RunFrame();
 	}
 	if (ctrlsConnected) {
-		GetControllersData(&myCtrl, &myCtrl2);
+		GetControllersData(&MyCtrl, &MyCtrl2);
 
 		if (m_pController)
 		{
