@@ -51,7 +51,7 @@ inline void HmdMatrix_SetIdentity( HmdMatrix34_t *pMatrix )
 
 
 // keys for use with the settings API
-static const char * const k_pch_Sample_Section = "driver_null";
+static const char * const k_pch_Sample_Section = "tovr";
 static const char * const k_pch_Sample_SerialNumber_String = "serialNumber";
 static const char * const k_pch_Sample_ModelNumber_String = "modelNumber";
 static const char * const k_pch_Sample_WindowX_Int32 = "windowX";
@@ -173,7 +173,7 @@ class CSampleDeviceDriver : public vr::ITrackedDeviceServerDriver, public vr::IV
 public:
 	CSampleDeviceDriver(  )
 	{
-		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+		HMDIndex_t = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
 		//DriverLog( "Using settings values\n" );
@@ -227,18 +227,23 @@ public:
 
 			if (status == ERROR_SUCCESS)
 			{
-				HMDConnected = true;
+				
 				hDll = LoadLibrary(libPath);
 				GetHMDData = (_GetHMDData)GetProcAddress(hDll, "GetHMDData");
 				GetControllersData = (_GetControllersData)GetProcAddress(hDll, "GetControllersData");
 				SetControllerData = (_SetControllerData)GetProcAddress(hDll, "SetControllerData");
 				SetCentering = (_SetCentering)GetProcAddress(hDll, "SetCentering");
 
-				if (GetHMDData == NULL) HMDConnected = false;
-				if (SetCentering == NULL) HMDConnected = false;
+				if (GetHMDData != NULL && GetHMDData(&MyHMD) == TOVR_SUCCESS)
+					HMDConnected = true;
 
 				if (GetControllersData != NULL && SetControllerData !=NULL && GetControllersData(&MyCtrl, &MyCtrl2) == TOVR_SUCCESS)
 					ctrlsConnected = true;
+
+				if (SetCentering == NULL) {
+					HMDConnected = false;
+					ctrlsConnected = false;
+				}
 			}
 		}
 
@@ -252,9 +257,8 @@ public:
 
 	virtual EVRInitError Activate( vr::TrackedDeviceIndex_t unObjectId ) 
 	{
-		m_unObjectId = unObjectId;
-		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer( m_unObjectId );
-
+		HMDIndex_t = unObjectId;
+		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer( HMDIndex_t );
 
 		vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str() );
 		vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, Prop_RenderModelName_String, m_sModelNumber.c_str() );
@@ -295,7 +299,7 @@ public:
 		// Thus "Prop_NamedIconPathDeviceAlertLow_String" in each model's block represent a specialization specific for that "model".
 		// Keys in "Model-v Defaults" are an example of mapping to the same states, and here all map to "Prop_NamedIconPathDeviceOff_String".
 		//
-		bool bSetupIconUsingExternalResourceFile = true;
+		/*bool bSetupIconUsingExternalResourceFile = true;
 		if ( !bSetupIconUsingExternalResourceFile )
 		{
 			// Setup properties directly in code.
@@ -308,14 +312,14 @@ public:
 			vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceNotReady_String, "{null}/icons/headset_sample_status_error.png" );
 			vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{null}/icons/headset_sample_status_standby.png" );
 			vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{null}/icons/headset_sample_status_ready_low.png" );
-		}
+		}*/
 
 		return VRInitError_None;
 	}
 
 	virtual void Deactivate() 
 	{
-		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+		HMDIndex_t = vr::k_unTrackedDeviceIndexInvalid;
 	}
 
 	virtual void EnterStandby()
@@ -477,16 +481,16 @@ public:
 		// In a real driver, this should happen from some pose tracking thread.
 		// The RunFrame interval is unspecified and can be very irregular if some other
 		// driver blocks it for some periodic task.
-		if ( m_unObjectId != vr::k_unTrackedDeviceIndexInvalid )
+		if ( HMDIndex_t != vr::k_unTrackedDeviceIndexInvalid )
 		{
-			vr::VRServerDriverHost()->TrackedDevicePoseUpdated( m_unObjectId, GetPose(), sizeof( DriverPose_t ) );
+			vr::VRServerDriverHost()->TrackedDevicePoseUpdated( HMDIndex_t , GetPose(), sizeof( DriverPose_t ) );
 		}
 	}
 
 	std::string GetSerialNumber() const { return m_sSerialNumber; }
 
 private:
-	vr::TrackedDeviceIndex_t m_unObjectId;
+	vr::TrackedDeviceIndex_t HMDIndex_t;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 
 	std::string m_sSerialNumber;
@@ -520,7 +524,8 @@ class CSampleControllerDriver : public vr::ITrackedDeviceServerDriver
 public:
 	CSampleControllerDriver()
 	{
-		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+		Ctrl1Index_t = vr::k_unTrackedDeviceIndexInvalid;
+		Ctrl2Index_t = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 	}
 
@@ -535,8 +540,17 @@ public:
 
 	virtual EVRInitError Activate( vr::TrackedDeviceIndex_t unObjectId )
 	{
-		m_unObjectId = unObjectId;
-		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer( m_unObjectId );
+		switch (ControllerIndex)
+		{
+		case 1:
+			Ctrl1Index_t = unObjectId;
+			Ctrl1Index_t = vr::VRProperties()->TrackedDeviceToPropertyContainer(Ctrl1Index_t);
+			break;
+		case 2:
+			Ctrl2Index_t = unObjectId;
+			Ctrl2Index_t = vr::VRProperties()->TrackedDeviceToPropertyContainer(Ctrl2Index_t);
+			break;
+		}
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ControllerType_String, "vive_controller");
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_LegacyInputProfile_String, "vive_controller");
@@ -585,7 +599,7 @@ public:
 
 		// this file tells the UI what to show the user for binding this controller as well as what default bindings should
 		// be for legacy or other apps
-		vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, Prop_InputProfilePath_String, "{null}/input/mycontroller_profile.json" );
+		vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, Prop_InputProfilePath_String, "{tovr}/input/mycontroller_profile.json" );
 
 		//  Buttons handles
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/application_menu/click", &HButtons[0]);
@@ -618,7 +632,15 @@ public:
 
 	virtual void Deactivate()
 	{
-		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+		switch (ControllerIndex)
+		{
+		case 1:
+			Ctrl1Index_t = vr::k_unTrackedDeviceIndexInvalid;
+			break;
+		case 2:
+			Ctrl2Index_t = vr::k_unTrackedDeviceIndexInvalid;
+			break;
+		}
 	}
 
 
@@ -736,9 +758,22 @@ public:
 			SetCentering(2);
 		}
 
-		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
-		{
-			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(DriverPose_t));
+		if (ControllerIndex == 1) {
+
+			if (Ctrl1Index_t != vr::k_unTrackedDeviceIndexInvalid)
+			{
+				vr::VRServerDriverHost()->TrackedDevicePoseUpdated(Ctrl1Index_t, GetPose(), sizeof(DriverPose_t));
+			}
+
+		}
+
+		if (ControllerIndex == 2) {
+
+			if (Ctrl2Index_t != vr::k_unTrackedDeviceIndexInvalid)
+			{
+				vr::VRServerDriverHost()->TrackedDevicePoseUpdated(Ctrl2Index_t, GetPose(), sizeof(DriverPose_t));
+			}
+
 		}
 
 #endif
@@ -774,7 +809,8 @@ public:
 	}
 
 private:
-	vr::TrackedDeviceIndex_t m_unObjectId;
+	vr::TrackedDeviceIndex_t Ctrl1Index_t;
+	vr::TrackedDeviceIndex_t Ctrl2Index_t;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 
 	//vr::VRInputComponentHandle_t m_compA;
@@ -815,8 +851,11 @@ EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 	VR_INIT_SERVER_DRIVER_CONTEXT( pDriverContext );
 	//InitDriverLog( vr::VRDriverLog() );
 
-	m_pNullHmdLatest = new CSampleDeviceDriver();
-	vr::VRServerDriverHost()->TrackedDeviceAdded( m_pNullHmdLatest->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD, m_pNullHmdLatest );
+	//if (HMDConnected) 
+	//{
+		m_pNullHmdLatest = new CSampleDeviceDriver();
+		vr::VRServerDriverHost()->TrackedDeviceAdded(m_pNullHmdLatest->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD, m_pNullHmdLatest);
+	//}
 
 	if (ctrlsConnected) {
 		m_pController = new CSampleControllerDriver();
@@ -834,16 +873,21 @@ EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 
 void CServerDriver_Sample::Cleanup() 
 {
-	if (hDll != NULL) FreeLibrary(hDll);
-	hDll = nullptr;
 	//CleanupDriverLog();
-	delete m_pNullHmdLatest;
-	m_pNullHmdLatest = NULL;
+	//if (HMDConnected) {
+		delete m_pNullHmdLatest;
+		m_pNullHmdLatest = NULL;
+	//}
+
 	if (ctrlsConnected) {
 		delete m_pController;
 		m_pController = NULL;
 		delete m_pController2;
 		m_pController2 = NULL;
+	}
+	if (hDll != NULL) {
+		FreeLibrary(hDll);
+		hDll = nullptr;
 	}
 }
 
