@@ -211,43 +211,6 @@ public:
 		DriverLog( "driver_null: Display Frequency: %f\n", m_flDisplayFrequency );
 		DriverLog( "driver_null: IPD: %f\n", m_flIPD );*/
 
-		CRegKey key;
-		TCHAR libPath[MAX_PATH];
-
-		LONG status = key.Open(HKEY_CURRENT_USER, _T("Software\\TrueOpenVR"));
-		if (status == ERROR_SUCCESS)
-		{
-			ULONG libPathSize = sizeof(libPath);
-
-			#ifdef _WIN64
-				status = key.QueryStringValue(_T("Library64"), libPath, &libPathSize);
-			#else
-				status = key.QueryStringValue(_T("Library"), libPath, &libPathSize);
-			#endif
-
-			if (status == ERROR_SUCCESS)
-			{
-				
-				hDll = LoadLibrary(libPath);
-				GetHMDData = (_GetHMDData)GetProcAddress(hDll, "GetHMDData");
-				GetControllersData = (_GetControllersData)GetProcAddress(hDll, "GetControllersData");
-				SetControllerData = (_SetControllerData)GetProcAddress(hDll, "SetControllerData");
-				SetCentering = (_SetCentering)GetProcAddress(hDll, "SetCentering");
-
-				if (GetHMDData != NULL && GetHMDData(&MyHMD) == TOVR_SUCCESS)
-					HMDConnected = true;
-
-				if (GetControllersData != NULL && SetControllerData !=NULL && GetControllersData(&MyCtrl, &MyCtrl2) == TOVR_SUCCESS)
-					ctrlsConnected = true;
-
-				if (SetCentering == NULL) {
-					HMDConnected = false;
-					ctrlsConnected = false;
-				}
-			}
-		}
-
-		key.Close();
 	}
 
 	virtual ~CSampleDeviceDriver()
@@ -540,92 +503,68 @@ public:
 
 	virtual EVRInitError Activate( vr::TrackedDeviceIndex_t unObjectId )
 	{
+
 		switch (ControllerIndex)
 		{
 		case 1:
 			Ctrl1Index_t = unObjectId;
-			Ctrl1Index_t = vr::VRProperties()->TrackedDeviceToPropertyContainer(Ctrl1Index_t);
+			m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(Ctrl1Index_t);
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_SerialNumber_String, "CTRL1Serial");
+			vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, Prop_ControllerRoleHint_Int32, TrackedControllerRole_LeftHand);
 			break;
 		case 2:
 			Ctrl2Index_t = unObjectId;
-			Ctrl2Index_t = vr::VRProperties()->TrackedDeviceToPropertyContainer(Ctrl2Index_t);
+			m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(Ctrl2Index_t);
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_SerialNumber_String, "CTRL2Serial");
+			vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, Prop_ControllerRoleHint_Int32, TrackedControllerRole_RightHand);
 			break;
 		}
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ControllerType_String, "vive_controller");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_LegacyInputProfile_String, "vive_controller");
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, "ViveMV");
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ManufacturerName_String, "HTC");
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, "vr_controller_vive_1_5");
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_TrackingSystemName_String, "VR Controller");
-		vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, Prop_DeviceClass_Int32, TrackedDeviceClass_Controller);
 
-		switch (ControllerIndex)
-		{
-		case 1:
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_SerialNumber_String, "CTRL1Serial");
-			break;
-		case 2:
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_SerialNumber_String, "CTRL2Serial");
-			break;
-		}
-		
-		uint64_t supportedButtons = 0xFFFFFFFFFFFFFFFFULL;
+		uint64_t supportedButtons = 0xA4;
 		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_SupportedButtons_Uint64, supportedButtons);
 
-		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-		//vr::VRProperties()->SetUint64Property( m_ulPropertyContainer, Prop_CurrentUniverseId_Uint64, 2 );
-
 		// avoid "not fullscreen" warnings from vrmonitor
-		//vr::VRProperties()->SetBoolProperty( m_ulPropertyContainer, Prop_IsOnDesktop_Bool, false );
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, Prop_IsOnDesktop_Bool, false);
 
-		// our sample device isn't actually tracked, so set this property to avoid having the icon blink in the status window
-		//vr::VRProperties()->SetBoolProperty( m_ulPropertyContainer, Prop_NeverTracked_Bool, false );
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_InputProfilePath_String, "{tovr}/input/controller_profile.json");
 
-		// even though we won't ever track we want to pretend to be the right hand so binding will work as expected
-
-		switch (ControllerIndex)
+		/*bool bSetupIconUsingExternalResourceFile = false;
+		if (!bSetupIconUsingExternalResourceFile)
 		{
-		case 1:
-			vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, Prop_ControllerRoleHint_Int32, TrackedControllerRole_LeftHand);
-			break;
-		case 2:
-			vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, Prop_ControllerRoleHint_Int32, TrackedControllerRole_RightHand);
-			break;
-		}
-			
+			// Setup properties directly in code.
+			// Path values are of the form {drivername}\icons\some_icon_filename.png
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String, "{tovr}/icons/barebones_status_off.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String, "{tovr}/icons/barebones_status_ready.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{tovr}/icons/barebones_status_ready_alert.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceNotReady_String, "{tovr}/icons/barebones_status_error.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{tovr}/icons/barebones_status_standby.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{tovr}/icons/barebones_status_ready_low.png");
+		}*/
 
-		// this file tells the UI what to show the user for binding this controller as well as what default bindings should
-		// be for legacy or other apps
-		vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, Prop_InputProfilePath_String, "{tovr}/input/mycontroller_profile.json" );
+		vr::VRDriverInput()->CreateScalarComponent( m_ulPropertyContainer, "/input/trackpad/x", &HAnalog[0], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/y", &HAnalog[1], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger/value", &HAnalog[2], vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedOneSided);
 
 		//  Buttons handles
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/application_menu/click", &HButtons[0]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/click", &HButtons[1]);
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/system/click", &HButtons[2]);
+
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/click", &HButtons[1]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trigger/click", &HButtons[5]);
+
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/click", &HButtons[3]);
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/touch", &HButtons[4]);
 
-		// Analog handles
-		vr::VRDriverInput()->CreateScalarComponent(
-			m_ulPropertyContainer, "/input/trackpad/x", &HAnalog[0],
-			vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided
-		);
-		vr::VRDriverInput()->CreateScalarComponent(
-			m_ulPropertyContainer, "/input/trackpad/y", &HAnalog[1],
-			vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided
-		);
-		vr::VRDriverInput()->CreateScalarComponent(
-			m_ulPropertyContainer, "/input/trigger/value", &HAnalog[2],
-			vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedOneSided
-		);
-
-		vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis0Type_Int32, vr::k_eControllerAxis_TrackPad);
-
 		// create our haptic component
-		vr::VRDriverInput()->CreateHapticComponent( m_ulPropertyContainer, "/output/haptic", &m_compHaptic);
+		vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer, "/output/haptic", &m_compHaptic);
 
 		return VRInitError_None;
 	}
@@ -707,7 +646,22 @@ public:
 
 	void RunFrame()
 	{
-	#if defined( _WINDOWS )
+		switch (ControllerIndex)
+		{
+		case 1:
+			if (Ctrl1Index_t != vr::k_unTrackedDeviceIndexInvalid)
+			{
+				vr::VRServerDriverHost()->TrackedDevicePoseUpdated(Ctrl1Index_t, GetPose(), sizeof(DriverPose_t));
+			}
+			break;
+		case 2:
+			if (Ctrl2Index_t != vr::k_unTrackedDeviceIndexInvalid)
+			{
+				vr::VRServerDriverHost()->TrackedDevicePoseUpdated(Ctrl2Index_t, GetPose(), sizeof(DriverPose_t));
+			}
+			break;
+		}
+
 		// Your driver would read whatever hardware state is associated with its input components and pass that
 		// in to UpdateBooleanComponent. This could happen in RunFrame or on a thread of your own that's reading USB
 		// state. There's no need to update input state unless it changes, but it doesn't do any harm to do so.
@@ -758,25 +712,6 @@ public:
 			SetCentering(2);
 		}
 
-		if (ControllerIndex == 1) {
-
-			if (Ctrl1Index_t != vr::k_unTrackedDeviceIndexInvalid)
-			{
-				vr::VRServerDriverHost()->TrackedDevicePoseUpdated(Ctrl1Index_t, GetPose(), sizeof(DriverPose_t));
-			}
-
-		}
-
-		if (ControllerIndex == 2) {
-
-			if (Ctrl2Index_t != vr::k_unTrackedDeviceIndexInvalid)
-			{
-				vr::VRServerDriverHost()->TrackedDevicePoseUpdated(Ctrl2Index_t, GetPose(), sizeof(DriverPose_t));
-			}
-
-		}
-
-#endif
 	}
 
 	void ProcessEvent( const vr::VREvent_t & vrEvent )
@@ -818,7 +753,7 @@ private:
 	//vr::VRInputComponentHandle_t m_compC;
 	vr::VRInputComponentHandle_t m_compHaptic;
 
-	vr::VRInputComponentHandle_t HButtons[5], HAnalog[3];
+	vr::VRInputComponentHandle_t HButtons[6], HAnalog[3];
 	//std::string m_sSerialNumber;
 	//std::string m_sModelNumber;
 };
@@ -851,11 +786,49 @@ EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 	VR_INIT_SERVER_DRIVER_CONTEXT( pDriverContext );
 	//InitDriverLog( vr::VRDriverLog() );
 
-	//if (HMDConnected) 
-	//{
+	CRegKey key;
+	TCHAR libPath[MAX_PATH];
+
+	LONG status = key.Open(HKEY_CURRENT_USER, _T("Software\\TrueOpenVR"));
+	if (status == ERROR_SUCCESS)
+	{
+		ULONG libPathSize = sizeof(libPath);
+
+#ifdef _WIN64
+		status = key.QueryStringValue(_T("Library64"), libPath, &libPathSize);
+#else
+		status = key.QueryStringValue(_T("Library"), libPath, &libPathSize);
+#endif
+
+		if (status == ERROR_SUCCESS)
+		{
+
+			hDll = LoadLibrary(libPath);
+			GetHMDData = (_GetHMDData)GetProcAddress(hDll, "GetHMDData");
+			GetControllersData = (_GetControllersData)GetProcAddress(hDll, "GetControllersData");
+			SetControllerData = (_SetControllerData)GetProcAddress(hDll, "SetControllerData");
+			SetCentering = (_SetCentering)GetProcAddress(hDll, "SetCentering");
+
+			if (GetHMDData != NULL && GetHMDData(&MyHMD) == TOVR_SUCCESS)
+				HMDConnected = true;
+
+			if (GetControllersData != NULL && SetControllerData != NULL && GetControllersData(&MyCtrl, &MyCtrl2) == TOVR_SUCCESS)
+				ctrlsConnected = true;
+
+			if (SetCentering == NULL) {
+				HMDConnected = false;
+				ctrlsConnected = false;
+			}
+		}
+	}
+
+	key.Close();
+
+	if (HMDConnected) 
+	{
 		m_pNullHmdLatest = new CSampleDeviceDriver();
 		vr::VRServerDriverHost()->TrackedDeviceAdded(m_pNullHmdLatest->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD, m_pNullHmdLatest);
-	//}
+	}
 
 	if (ctrlsConnected) {
 		m_pController = new CSampleControllerDriver();
@@ -874,10 +847,10 @@ EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 void CServerDriver_Sample::Cleanup() 
 {
 	//CleanupDriverLog();
-	//if (HMDConnected) {
+	if (HMDConnected) {
 		delete m_pNullHmdLatest;
 		m_pNullHmdLatest = NULL;
-	//}
+	}
 
 	if (ctrlsConnected) {
 		delete m_pController;

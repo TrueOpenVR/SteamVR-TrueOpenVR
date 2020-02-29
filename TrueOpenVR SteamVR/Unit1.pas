@@ -103,13 +103,18 @@ begin
 
   if DirectoryExists(SteamPath) then begin
 
-    if FileExists(SteamPath + '\config\steamvr.vrsettings') then
-      CopyFile(PChar(SteamPath + '\config\steamvr.vrsettings'), PChar(SteamPath + '\config\steamvr.vrsettings.bak'), false);
+    if FileExists(ExtractFilePath(ParamStr(0)) + 'OpenVR\default.vrsettings') then begin
 
-    if FileExists(ExtractFilePath(ParamStr(0)) + 'OpenVR\steamvr.vrsettings') then begin
+      CreateDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr');
+      CreateDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin');
+      CreateDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win32');
+      CreateDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win64');
+      CreateDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\resources');
+      CreateDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\resources\settings');
 
       Config:=TStringList.Create;
-      Config.LoadFromFile(ExtractFilePath(ParamStr(0)) + 'OpenVR\steamvr.vrsettings');
+      Config.LoadFromFile(ExtractFilePath(ParamStr(0)) + 'OpenVR\default.vrsettings');
+
       Config.Text:=StringReplace(Config.Text, '<RENDERWIDTH>', IntToStr(RenderWidth), [rfReplaceAll]);
       Config.Text:=StringReplace(Config.Text, '<RENDERHEIGHT>', IntToStr(RenderHeight), [rfReplaceAll]);
 
@@ -129,23 +134,18 @@ begin
       else
         Config.Text:=StringReplace(Config.Text, '<DEBUGMODE>', 'false', [rfReplaceAll]);
 
-      Config.SaveToFile(SteamPath + '\config\steamvr.vrsettings');
-
+      Config.SaveToFile(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\resources\settings\default.vrsettings');
       Config.Free;
 
-      CreateDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr');
-      CreateDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin');
-      CreateDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win32');
-      CreateDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win64');
-
     end else begin
-      Application.MessageBox('File "steamvr.vrsettings" not found.', PChar(Caption), MB_ICONERROR);
+      Application.MessageBox('File "default.vrsettings" not found.', PChar(Caption), MB_ICONERROR);
       Error:=true;
     end;
 
     if not ((CopyFile(PChar(ExtractFilePath(ParamStr(0)) + 'OpenVR\driver.vrdrivermanifest'), PChar(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\driver.vrdrivermanifest'), false)) and
       (CopyFile(PChar(ExtractFilePath(ParamStr(0)) + 'OpenVR\bin\win32\driver_tovr.dll'), PChar(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win32\driver_tovr.dll'), false)) and
-      (CopyFile(PChar(ExtractFilePath(ParamStr(0)) + 'OpenVR\bin\win64\driver_tovr.dll'), PChar(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win64\driver_tovr.dll'), false))) then begin
+      (CopyFile(PChar(ExtractFilePath(ParamStr(0)) + 'OpenVR\bin\win64\driver_tovr.dll'), PChar(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win64\driver_tovr.dll'), false)))
+       then begin
         Application.MessageBox('Error copy driver files. Please close Steam and SteamVR.', PChar(Caption), MB_ICONERROR);
         Error:=true;
       end;
@@ -168,17 +168,17 @@ end;
 procedure TMain.UninstallBtnClick(Sender: TObject);
 begin
   if DirectoryExists(SteamPath) then begin
-    if FileExists(SteamPath + '\config\steamvr.vrsettings') then
-      if FileExists(SteamPath + '\config\steamvr.vrsettings.bak') then begin
-        CopyFile(PChar(SteamPath + '\config\steamvr.vrsettings.bak'), PChar(SteamPath + '\config\steamvr.vrsettings'), false);
-        DeleteFile(SteamPath + '\config\steamvr.vrsettings.bak');
-      end;
       DeleteFile(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\driver.vrdrivermanifest');
       DeleteFile(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win32\driver_tovr.dll');
       DeleteFile(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win64\driver_tovr.dll');
       RemoveDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win32');
       RemoveDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin\win64');
       RemoveDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\bin');
+
+      DeleteFile(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\resources\settings\default.vrsettings');
+      RemoveDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\resources\settings');
+      RemoveDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr\resources');
+
       RemoveDir(SteamPath + '\steamapps\common\SteamVR\drivers\tovr');
       Application.MessageBox('Uninstalled', PChar(Caption), MB_ICONINFORMATION);
   end else
