@@ -115,7 +115,7 @@ begin
       Config:=TStringList.Create;
       Config.LoadFromFile(ExtractFilePath(ParamStr(0)) + 'OpenVR\default.vrsettings');
 
-      Config.Text:=StringReplace(Config.Text, '<RENDERWIDTH>', IntToStr(RenderWidth), [rfReplaceAll]);
+      Config.Text:=StringReplace(Config.Text, '<RENDERWIDTH>', IntToStr(RenderWidth div 2), [rfReplaceAll]);
       Config.Text:=StringReplace(Config.Text, '<RENDERHEIGHT>', IntToStr(RenderHeight), [rfReplaceAll]);
 
       Config.Text:=StringReplace(Config.Text, '<WINDOWWIDTH>', IntToStr(Screen.Monitors[ScreenIndex].Width), [rfReplaceAll]);
