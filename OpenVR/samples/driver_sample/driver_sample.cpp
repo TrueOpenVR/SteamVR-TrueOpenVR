@@ -68,6 +68,7 @@ static const char * const k_pch_Sample_ZoomWidth_Float = "ZoomWidth";
 static const char * const k_pch_Sample_ZoomHeight_Float = "ZoomHeight";
 static const char * const k_pch_Sample_DistanceBetweenEyes_Int32 = "DistanceBetweenEyes";
 static const char * const k_pch_Sample_ScreenOffsetX_Int32 = "ScreenOffsetX";
+static const char * const k_pch_Sample_Stereo_Bool = "Stereo";
 static const char * const k_pch_Sample_DebugMode_Bool = "DebugMode";
 
 typedef struct _HMDData
@@ -201,6 +202,7 @@ public:
 		m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_ZoomHeight_Float);
 		m_nDistanceBetweenEyes = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_DistanceBetweenEyes_Int32);
 		m_nScreenOffsetX = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_ScreenOffsetX_Int32);
+		m_bStereoMode = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_Stereo_Bool);
 		m_bDebugMode = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_DebugMode_Bool);
 
 		/*DriverLog( "driver_null: Serial Number: %s\n", m_sSerialNumber.c_str() );
@@ -349,17 +351,32 @@ public:
 		{
 			*pnX = m_nWindowWidth / 2;
 		}*/
-		*pnY = m_nScreenOffsetX;
-		*pnWidth = m_nWindowWidth / 2;
-		*pnHeight = m_nWindowHeight;
 
-		if (eEye == Eye_Left)
-		{
-			*pnX = m_nDistanceBetweenEyes;
+		if (m_bStereoMode) {
+
+			*pnY = m_nScreenOffsetX;
+			*pnWidth = m_nWindowWidth / 2;
+			*pnHeight = m_nWindowHeight;
+
+			if (eEye == Eye_Left)
+			{
+				*pnX = m_nDistanceBetweenEyes;
+			}
+			else
+			{
+				*pnX = (m_nWindowWidth / 2) - m_nDistanceBetweenEyes;
+			}
 		}
-		else
-		{
-			*pnX = (m_nWindowWidth / 2) - m_nDistanceBetweenEyes;
+		else { //Mono mode
+			*pnX = m_nWindowWidth / 4;
+			*pnY = 0;
+			*pnWidth = m_nWindowWidth / 2;
+			*pnHeight = m_nWindowHeight;
+
+			if (eEye == Eye_Right)
+			{
+				*pnX = m_nWindowWidth;
+			}
 		}
 	}
 
@@ -474,6 +491,7 @@ private:
 	float m_fZoomHeight;
 	int32_t m_nDistanceBetweenEyes;
 	int32_t m_nScreenOffsetX;
+	bool m_bStereoMode = true;
 	bool m_bDebugMode;
 };
 
