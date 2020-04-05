@@ -20,6 +20,7 @@ renderWidth, renderHeight | image rendering resolution for one eye.
 windowWidth, windowHeight | height and width of the displayed window.
 windowX, windowY | window offset is required for display on other monitors. For example, to display on the second display, which is displayed on the left, you need to specify the value 1920 (provided that the first display we have is 1920 by 1080).
 Stereo | stereo or mono mode (two on one eye) for testing or etc.
+Mono_4x3 | In mono mode, the top of the image is cropped and a 4 by 3 mode is obtained.
 DebugMode | debug mode, locked at 30 FPS. After checking, it is recommended to set it to false (disable).
 
 Config path - "...\Steam\steamapps\common\SteamVR\drivers\tovr\resources\settings".

@@ -69,6 +69,7 @@ static const char * const k_pch_Sample_ZoomHeight_Float = "ZoomHeight";
 static const char * const k_pch_Sample_DistanceBetweenEyes_Int32 = "DistanceBetweenEyes";
 static const char * const k_pch_Sample_ScreenOffsetX_Int32 = "ScreenOffsetX";
 static const char * const k_pch_Sample_Stereo_Bool = "Stereo";
+static const char * const k_pch_Sample_Mono_4x3_Bool = "Mono_4x3";
 static const char * const k_pch_Sample_DebugMode_Bool = "DebugMode";
 
 typedef struct _HMDData
@@ -203,6 +204,7 @@ public:
 		m_nDistanceBetweenEyes = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_DistanceBetweenEyes_Int32);
 		m_nScreenOffsetX = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_ScreenOffsetX_Int32);
 		m_bStereoMode = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_Stereo_Bool);
+		m_bMono_4x3_Mode = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_Mono_4x3_Bool);
 		m_bDebugMode = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_DebugMode_Bool);
 
 		/*DriverLog( "driver_null: Serial Number: %s\n", m_sSerialNumber.c_str() );
@@ -368,10 +370,26 @@ public:
 			}
 		}
 		else { //Mono mode
-			*pnX = m_nWindowWidth / 4;
+			//*pnX = m_nWindowWidth / 4;
+			//*pnY = 0;
+			//*pnWidth = m_nWindowWidth / 2;
+			//*pnHeight = m_nWindowHeight;
+
+			//if (eEye == Eye_Right)
+			//{
+			//	*pnX = m_nWindowWidth;
+			//}
+			int quarter = 0;
+			
+			if (m_bMono_4x3_Mode)
+				quarter = m_nWindowWidth / 4;
+			else
+				quarter = 0;
+			
+			*pnX = m_nWindowWidth / 4 - quarter / 2;
 			*pnY = 0;
-			*pnWidth = m_nWindowWidth / 2;
-			*pnHeight = m_nWindowHeight;
+			*pnWidth = m_nWindowWidth / 2 + quarter;
+			*pnHeight = m_nWindowHeight + quarter;
 
 			if (eEye == Eye_Right)
 			{
@@ -492,6 +510,7 @@ private:
 	int32_t m_nDistanceBetweenEyes;
 	int32_t m_nScreenOffsetX;
 	bool m_bStereoMode = true;
+	bool m_bMono_4x3_Mode = true;
 	bool m_bDebugMode;
 };
 
