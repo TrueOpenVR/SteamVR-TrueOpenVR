@@ -17,7 +17,6 @@
 		"DistanceBetweenEyes" : 0,
 		"ScreenOffsetX" : 0,
 		"Stereo" : true,
-		"Mono_4x3" : true,
 		"DebugMode" : <DEBUGMODE>
 	}
 }

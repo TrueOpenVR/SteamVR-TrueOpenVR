@@ -12,6 +12,7 @@
 #include <atlbase.h>
 
 using namespace vr;
+using namespace std::chrono;
 
 #if defined(_WIN32)
 #define HMD_DLL_EXPORT extern "C" __declspec( dllexport )
@@ -69,7 +70,6 @@ static const char * const k_pch_Sample_ZoomHeight_Float = "ZoomHeight";
 static const char * const k_pch_Sample_DistanceBetweenEyes_Int32 = "DistanceBetweenEyes";
 static const char * const k_pch_Sample_ScreenOffsetX_Int32 = "ScreenOffsetX";
 static const char * const k_pch_Sample_Stereo_Bool = "Stereo";
-static const char * const k_pch_Sample_Mono_4x3_Bool = "Mono_4x3";
 static const char * const k_pch_Sample_DebugMode_Bool = "DebugMode";
 
 typedef struct _HMDData
@@ -125,6 +125,11 @@ bool HMDConnected = false, ctrlsConnected = false;
 double DegToRad(double f) {
 	return f * (3.14159265358979323846 / 180);
 }
+
+
+//Velocity
+double FirstCtrlLastPos[3] = { 0, 0, 0 }, SecondCtrlLastPos[3] = { 0, 0, 0 };
+milliseconds deltaTime;
 
 //-----------------------------------------------------------------------------
 // Purpose:
@@ -204,7 +209,6 @@ public:
 		m_nDistanceBetweenEyes = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_DistanceBetweenEyes_Int32);
 		m_nScreenOffsetX = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_ScreenOffsetX_Int32);
 		m_bStereoMode = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_Stereo_Bool);
-		m_bMono_4x3_Mode = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_Mono_4x3_Bool);
 		m_bDebugMode = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_DebugMode_Bool);
 
 		/*DriverLog( "driver_null: Serial Number: %s\n", m_sSerialNumber.c_str() );
@@ -342,17 +346,17 @@ public:
 	virtual void GetEyeOutputViewport( EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight ) 
 	{
 		/**pnY = 0;
-		*pnWidth = m_nWindowWidth / 2;
-		*pnHeight = m_nWindowHeight;
-	
-		if ( eEye == Eye_Left )
-		{
-			*pnX = 0;
-		}
-		else
-		{
-			*pnX = m_nWindowWidth / 2;
-		}*/
+				*pnWidth = m_nWindowWidth / 2;
+				*pnHeight = m_nWindowHeight;
+
+				if ( eEye == Eye_Left )
+				{
+					*pnX = 0;
+				}
+				else
+				{
+					*pnX = m_nWindowWidth / 2;
+				}*/
 
 		if (m_bStereoMode) {
 
@@ -370,40 +374,29 @@ public:
 			}
 		}
 		else { //Mono mode
-			//*pnX = m_nWindowWidth / 4;
-			//*pnY = 0;
-			//*pnWidth = m_nWindowWidth / 2;
-			//*pnHeight = m_nWindowHeight;
+			pnY = 0;
+			*pnWidth = m_nRenderWidth;
+			*pnHeight = m_nRenderHeight;
 
-			//if (eEye == Eye_Right)
-			//{
-			//	*pnX = m_nWindowWidth;
-			//}
-			int quarter = 0;
-			
-			if (m_bMono_4x3_Mode)
-				quarter = m_nWindowWidth / 4;
+			if (eEye == Eye_Left)
+			{
+				*pnX = (m_nWindowWidth - m_nRenderWidth) / 2;
+			}
 			else
-				quarter = 0;
-			
-			*pnX = m_nWindowWidth / 4 - quarter / 2;
-			*pnY = 0;
-			*pnWidth = m_nWindowWidth / 2 + quarter;
-			*pnHeight = m_nWindowHeight + quarter;
-
-			if (eEye == Eye_Right)
 			{
 				*pnX = m_nWindowWidth;
 			}
+			
+	
 		}
 	}
 
 	virtual void GetProjectionRaw( EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom ) 
 	{
-		*pfLeft = -1.0;
-		*pfRight = 1.0;
+		*pfLeft = (float)m_nRenderWidth / m_nRenderHeight * -1;
+		*pfRight = (float)m_nRenderWidth / m_nRenderHeight;
 		*pfTop = -1.0;
-		*pfBottom = 1.0;	
+		*pfBottom = 1.0;
 	}
 
 	virtual DistortionCoordinates_t ComputeDistortion( EVREye eEye, float fU, float fV ) 
@@ -510,7 +503,6 @@ private:
 	int32_t m_nDistanceBetweenEyes;
 	int32_t m_nScreenOffsetX;
 	bool m_bStereoMode = true;
-	bool m_bMono_4x3_Mode = true;
 	bool m_bDebugMode;
 };
 
@@ -660,6 +652,14 @@ public:
 			pose.vecPosition[1] = MyCtrl.Y;
 			pose.vecPosition[2] = MyCtrl.Z;
 
+			//Velocity, right?
+			pose.vecVelocity[0] = (pose.vecPosition[0] - FirstCtrlLastPos[0]) * 1000 / max((int)deltaTime.count(), 1) / 3; // div 3 - ghosting fix
+			pose.vecVelocity[1] = (pose.vecPosition[1] - FirstCtrlLastPos[1]) * 1000 / max((int)deltaTime.count(), 1) / 3;
+			pose.vecVelocity[2] = (pose.vecPosition[2] - FirstCtrlLastPos[2]) * 1000 / max((int)deltaTime.count(), 1) / 3;
+			FirstCtrlLastPos[0] = pose.vecPosition[0];
+			FirstCtrlLastPos[1] = pose.vecPosition[1];
+			FirstCtrlLastPos[2] = pose.vecPosition[2];
+
 			//Convert yaw, pitch, roll to quaternion
 			pose.qRotation.w = cos(DegToRad(MyCtrl.Yaw) * 0.5) * cos(DegToRad(MyCtrl.Roll) * 0.5) * cos(DegToRad(MyCtrl.Pitch) * 0.5) + sin(DegToRad(MyCtrl.Yaw) * 0.5) * sin(DegToRad(MyCtrl.Roll) * 0.5) * sin(DegToRad(MyCtrl.Pitch) * 0.5);
 			pose.qRotation.x = cos(DegToRad(MyCtrl.Yaw) * 0.5) * sin(DegToRad(MyCtrl.Roll) * 0.5) * cos(DegToRad(MyCtrl.Pitch) * 0.5) - sin(DegToRad(MyCtrl.Yaw) * 0.5) * cos(DegToRad(MyCtrl.Roll) * 0.5) * sin(DegToRad(MyCtrl.Pitch) * 0.5);
@@ -671,6 +671,14 @@ public:
 			pose.vecPosition[0] = MyCtrl2.X;
 			pose.vecPosition[1] = MyCtrl2.Y;
 			pose.vecPosition[2] = MyCtrl2.Z;
+
+			//Velocity, right?
+			pose.vecVelocity[0] = (pose.vecPosition[0] - SecondCtrlLastPos[0]) * 1000 / max((int)deltaTime.count(), 1) / 3; 
+			pose.vecVelocity[1] = (pose.vecPosition[1] - SecondCtrlLastPos[1]) * 1000 / max((int)deltaTime.count(), 1) / 3;
+			pose.vecVelocity[2] = (pose.vecPosition[2] - SecondCtrlLastPos[2]) * 1000 / max((int)deltaTime.count(), 1) / 3;
+			SecondCtrlLastPos[0] = pose.vecPosition[0];
+			SecondCtrlLastPos[1] = pose.vecPosition[1];
+			SecondCtrlLastPos[2] = pose.vecPosition[2];
 
 			pose.qRotation.w = cos(DegToRad(MyCtrl2.Yaw) * 0.5) * cos(DegToRad(MyCtrl2.Roll) * 0.5) * cos(DegToRad(MyCtrl2.Pitch) * 0.5) + sin(DegToRad(MyCtrl2.Yaw) * 0.5) * sin(DegToRad(MyCtrl2.Roll) * 0.5) * sin(DegToRad(MyCtrl2.Pitch) * 0.5);
 			pose.qRotation.x = cos(DegToRad(MyCtrl2.Yaw) * 0.5) * sin(DegToRad(MyCtrl2.Roll) * 0.5) * cos(DegToRad(MyCtrl2.Pitch) * 0.5) - sin(DegToRad(MyCtrl2.Yaw) * 0.5) * cos(DegToRad(MyCtrl2.Roll) * 0.5) * sin(DegToRad(MyCtrl2.Pitch) * 0.5);
@@ -904,6 +912,11 @@ void CServerDriver_Sample::Cleanup()
 
 void CServerDriver_Sample::RunFrame()
 {
+	//Velocity
+	static milliseconds lastMillis = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+	deltaTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()) - lastMillis;
+	lastMillis = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+
 	if ( m_pNullHmdLatest )
 	{
 		m_pNullHmdLatest->RunFrame();
