@@ -126,10 +126,28 @@ double DegToRad(double f) {
 	return f * (3.14159265358979323846 / 180);
 }
 
-
 //Velocity
 double FirstCtrlLastPos[3] = { 0, 0, 0 }, SecondCtrlLastPos[3] = { 0, 0, 0 };
 milliseconds deltaTime;
+
+inline vr::HmdQuaternion_t EulerAngleToQuaternion(double Yaw, double Pitch, double Roll)
+{
+	vr::HmdQuaternion_t q;
+	// Abbreviations for the various angular functions
+	double cy = cos(Yaw * 0.5);
+	double sy = sin(Yaw * 0.5);
+	double cp = cos(Pitch * 0.5);
+	double sp = sin(Pitch * 0.5);
+	double cr = cos(Roll * 0.5);
+	double sr = sin(Roll * 0.5);
+
+	q.w = cr * cp * cy + sr * sp * sy;
+	q.x = sr * cp * cy - cr * sp * sy;
+	q.y = cr * sp * cy + sr * cp * sy;
+	q.z = cr * cp * sy - sr * sp * cy;
+
+	return q;
+}
 
 //-----------------------------------------------------------------------------
 // Purpose:
@@ -449,18 +467,16 @@ public:
 			if ((GetAsyncKeyState(VK_NUMPAD5) & 0x8000) != 0 || ((GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 && (GetAsyncKeyState(VK_MENU) & 0x8000) != 0 && (GetAsyncKeyState(82) & 0x8000) != 0))
 				SetCentering(0);
 
+			//TrueOpenVR data
 			GetHMDData(&MyHMD);
 
 			//Set head tracking rotation
-			pose.qRotation.w = cos(DegToRad(MyHMD.Yaw) * 0.5) * cos(DegToRad(MyHMD.Roll) * 0.5) * cos(DegToRad(MyHMD.Pitch) * 0.5) + sin(DegToRad(MyHMD.Yaw) * 0.5) * sin(DegToRad(MyHMD.Roll) * 0.5) * sin(DegToRad(MyHMD.Pitch) * 0.5);
-			pose.qRotation.x = cos(DegToRad(MyHMD.Yaw) * 0.5) * sin(DegToRad(MyHMD.Roll) * 0.5) * cos(DegToRad(MyHMD.Pitch) * 0.5) - sin(DegToRad(MyHMD.Yaw) * 0.5) * cos(DegToRad(MyHMD.Roll) * 0.5) * sin(DegToRad(MyHMD.Pitch) * 0.5);
-			pose.qRotation.y = cos(DegToRad(MyHMD.Yaw) * 0.5) * cos(DegToRad(MyHMD.Roll) * 0.5) * sin(DegToRad(MyHMD.Pitch) * 0.5) + sin(DegToRad(MyHMD.Yaw) * 0.5) * sin(DegToRad(MyHMD.Roll) * 0.5) * cos(DegToRad(MyHMD.Pitch) * 0.5);
-			pose.qRotation.z = sin(DegToRad(MyHMD.Yaw) * 0.5) * cos(DegToRad(MyHMD.Roll) * 0.5) * cos(DegToRad(MyHMD.Pitch) * 0.5) - cos(DegToRad(MyHMD.Yaw) * 0.5) * sin(DegToRad(MyHMD.Roll) * 0.5) * sin(DegToRad(MyHMD.Pitch) * 0.5);
+			pose.qRotation = EulerAngleToQuaternion(DegToRad(MyHMD.Roll), DegToRad(-MyHMD.Yaw), DegToRad(-MyHMD.Pitch));
 
-			//Set position tracking
+			//Set head position tracking
 			pose.vecPosition[0] = MyHMD.X;
-			pose.vecPosition[1] = MyHMD.Y;
-			pose.vecPosition[2] = MyHMD.Z;
+			pose.vecPosition[1] = MyHMD.Z;
+			pose.vecPosition[2] = MyHMD.Y;
 		}
 
 		return pose;
@@ -649,30 +665,27 @@ public:
 		if (ControllerIndex == 1) {
 
 			pose.vecPosition[0] = MyCtrl.X;
-			pose.vecPosition[1] = MyCtrl.Y;
-			pose.vecPosition[2] = MyCtrl.Z;
+			pose.vecPosition[1] = MyCtrl.Z;
+			pose.vecPosition[2] = MyCtrl.Y;
 
 			//Velocity, right?
-			pose.vecVelocity[0] = (pose.vecPosition[0] - FirstCtrlLastPos[0]) * 1000 / max((int)deltaTime.count(), 1) / 3; // div 3 - ghosting fix
+			pose.vecVelocity[0] = (pose.vecPosition[0] - FirstCtrlLastPos[0]) * 1000 / max((int)deltaTime.count(), 1) / 3; // div 3 - ghosting fix, there are right ways to remove ghosting?
 			pose.vecVelocity[1] = (pose.vecPosition[1] - FirstCtrlLastPos[1]) * 1000 / max((int)deltaTime.count(), 1) / 3;
 			pose.vecVelocity[2] = (pose.vecPosition[2] - FirstCtrlLastPos[2]) * 1000 / max((int)deltaTime.count(), 1) / 3;
 			FirstCtrlLastPos[0] = pose.vecPosition[0];
 			FirstCtrlLastPos[1] = pose.vecPosition[1];
 			FirstCtrlLastPos[2] = pose.vecPosition[2];
 
-			//Convert yaw, pitch, roll to quaternion
-			pose.qRotation.w = cos(DegToRad(MyCtrl.Yaw) * 0.5) * cos(DegToRad(MyCtrl.Roll) * 0.5) * cos(DegToRad(MyCtrl.Pitch) * 0.5) + sin(DegToRad(MyCtrl.Yaw) * 0.5) * sin(DegToRad(MyCtrl.Roll) * 0.5) * sin(DegToRad(MyCtrl.Pitch) * 0.5);
-			pose.qRotation.x = cos(DegToRad(MyCtrl.Yaw) * 0.5) * sin(DegToRad(MyCtrl.Roll) * 0.5) * cos(DegToRad(MyCtrl.Pitch) * 0.5) - sin(DegToRad(MyCtrl.Yaw) * 0.5) * cos(DegToRad(MyCtrl.Roll) * 0.5) * sin(DegToRad(MyCtrl.Pitch) * 0.5);
-			pose.qRotation.y = cos(DegToRad(MyCtrl.Yaw) * 0.5) * cos(DegToRad(MyCtrl.Roll) * 0.5) * sin(DegToRad(MyCtrl.Pitch) * 0.5) + sin(DegToRad(MyCtrl.Yaw) * 0.5) * sin(DegToRad(MyCtrl.Roll) * 0.5) * cos(DegToRad(MyCtrl.Pitch) * 0.5);
-			pose.qRotation.z = sin(DegToRad(MyCtrl.Yaw) * 0.5) * cos(DegToRad(MyCtrl.Roll) * 0.5) * cos(DegToRad(MyCtrl.Pitch) * 0.5) - cos(DegToRad(MyCtrl.Yaw) * 0.5) * sin(DegToRad(MyCtrl.Roll) * 0.5) * sin(DegToRad(MyCtrl.Pitch) * 0.5);
+			//Rotation first controller
+			pose.qRotation = EulerAngleToQuaternion(DegToRad(MyCtrl.Roll), DegToRad(-MyCtrl.Yaw), DegToRad(-MyCtrl.Pitch));
 
 		} else { 
 			//Controller2
 			pose.vecPosition[0] = MyCtrl2.X;
-			pose.vecPosition[1] = MyCtrl2.Y;
-			pose.vecPosition[2] = MyCtrl2.Z;
+			pose.vecPosition[1] = MyCtrl2.Z;
+			pose.vecPosition[2] = MyCtrl2.Y;
 
-			//Velocity, right?
+			//Velocity
 			pose.vecVelocity[0] = (pose.vecPosition[0] - SecondCtrlLastPos[0]) * 1000 / max((int)deltaTime.count(), 1) / 3; 
 			pose.vecVelocity[1] = (pose.vecPosition[1] - SecondCtrlLastPos[1]) * 1000 / max((int)deltaTime.count(), 1) / 3;
 			pose.vecVelocity[2] = (pose.vecPosition[2] - SecondCtrlLastPos[2]) * 1000 / max((int)deltaTime.count(), 1) / 3;
@@ -680,10 +693,7 @@ public:
 			SecondCtrlLastPos[1] = pose.vecPosition[1];
 			SecondCtrlLastPos[2] = pose.vecPosition[2];
 
-			pose.qRotation.w = cos(DegToRad(MyCtrl2.Yaw) * 0.5) * cos(DegToRad(MyCtrl2.Roll) * 0.5) * cos(DegToRad(MyCtrl2.Pitch) * 0.5) + sin(DegToRad(MyCtrl2.Yaw) * 0.5) * sin(DegToRad(MyCtrl2.Roll) * 0.5) * sin(DegToRad(MyCtrl2.Pitch) * 0.5);
-			pose.qRotation.x = cos(DegToRad(MyCtrl2.Yaw) * 0.5) * sin(DegToRad(MyCtrl2.Roll) * 0.5) * cos(DegToRad(MyCtrl2.Pitch) * 0.5) - sin(DegToRad(MyCtrl2.Yaw) * 0.5) * cos(DegToRad(MyCtrl2.Roll) * 0.5) * sin(DegToRad(MyCtrl2.Pitch) * 0.5);
-			pose.qRotation.y = cos(DegToRad(MyCtrl2.Yaw) * 0.5) * cos(DegToRad(MyCtrl2.Roll) * 0.5) * sin(DegToRad(MyCtrl2.Pitch) * 0.5) + sin(DegToRad(MyCtrl2.Yaw) * 0.5) * sin(DegToRad(MyCtrl2.Roll) * 0.5) * cos(DegToRad(MyCtrl2.Pitch) * 0.5);
-			pose.qRotation.z = sin(DegToRad(MyCtrl2.Yaw) * 0.5) * cos(DegToRad(MyCtrl2.Roll) * 0.5) * cos(DegToRad(MyCtrl2.Pitch) * 0.5) - cos(DegToRad(MyCtrl2.Yaw) * 0.5) * sin(DegToRad(MyCtrl2.Roll) * 0.5) * sin(DegToRad(MyCtrl2.Pitch) * 0.5);
+			pose.qRotation = EulerAngleToQuaternion(DegToRad(MyCtrl2.Roll), DegToRad(-MyCtrl2.Yaw), DegToRad(-MyCtrl2.Pitch));
 		}
 
 		return pose;
