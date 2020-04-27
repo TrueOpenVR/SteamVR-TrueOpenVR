@@ -15,6 +15,7 @@ DistanceBetweenEyes | the distance between stereo images, the larger the closer.
 DistortionK1, DistortionK2 | lens distortion factors.
 ScreenOffsetX | horizontal image shift.
 ZoomHeight, ZoomWidth | scaling factors of stereo images.
+FOV | Field of view.
 displayFrequency | screen refresh rate.
 renderWidth, renderHeight | image rendering resolution for one eye (for a mono mode can specify the full resolution ).
 windowWidth, windowHeight | height and width of the displayed window.
